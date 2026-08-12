@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS recipes (
     instructions TEXT[] NOT NULL DEFAULT '{}',
     tags VARCHAR(50)[] NOT NULL DEFAULT '{}',
     source_url TEXT,
-    embedding VECTOR(1536),
+    -- 768 dims matches Gemini's text-embedding-004 (see rag.constants.ts).
+    embedding VECTOR(768),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
