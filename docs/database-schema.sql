@@ -11,8 +11,8 @@ CREATE TABLE IF NOT EXISTS recipe_drafts (
     tags VARCHAR(50)[] DEFAULT '{}',
     source_url TEXT,
     raw_extracted_text TEXT,
-    created_at TIMESTAMP WITH TIMEZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIMEZONE DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS recipes (
@@ -24,8 +24,8 @@ CREATE TABLE IF NOT EXISTS recipes (
     tags VARCHAR(50)[] NOT NULL DEFAULT '{}',
     source_url TEXT,
     embedding VECTOR(1536),
-    created_at TIMESTAMP WITH TIMEZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIMEZONE DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_recipes_chat_id ON recipes(telegram_chat_id);
