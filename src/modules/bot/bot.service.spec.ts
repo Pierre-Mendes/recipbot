@@ -79,6 +79,74 @@ describe('BotService', () => {
     ).toThrow('TELEGRAM_BOT_TOKEN is not configured');
   });
 
+  describe('onModuleInit', () => {
+    it('stays ready for webhook updates without launching polling (default mode)', async () => {
+      service.bot.launch = jest.fn();
+
+      await service.onModuleInit();
+
+      expect(service.bot.launch).not.toHaveBeenCalled();
+    });
+
+    it('launches long polling when TELEGRAM_BOT_MODE=polling', async () => {
+      const config = {
+        get: jest.fn((key: string) => {
+          if (key === 'TELEGRAM_BOT_TOKEN') return 'test-token';
+          if (key === 'TELEGRAM_BOT_MODE') return 'polling';
+          return undefined;
+        }),
+      } as unknown as ConfigService;
+      const pollingService = new BotService(
+        config,
+        ocrService,
+        recipesService,
+        editSessions,
+      );
+      pollingService.bot.launch = jest.fn().mockResolvedValue(undefined);
+
+      await pollingService.onModuleInit();
+
+      expect(pollingService.bot.launch).toHaveBeenCalled();
+    });
+  });
+
+  describe('onModuleDestroy', () => {
+    it('does not call stop() when the bot was never launched (default webhook mode)', async () => {
+      service.bot.launch = jest.fn();
+      service.bot.stop = jest.fn();
+      await service.onModuleInit();
+
+      service.onModuleDestroy();
+
+      expect(service.bot.stop).not.toHaveBeenCalled();
+    });
+
+    it('stops the bot when it was launched via polling', async () => {
+      const config = {
+        get: jest.fn((key: string) => {
+          if (key === 'TELEGRAM_BOT_TOKEN') return 'test-token';
+          if (key === 'TELEGRAM_BOT_MODE') return 'polling';
+          return undefined;
+        }),
+      } as unknown as ConfigService;
+      const pollingService = new BotService(
+        config,
+        ocrService,
+        recipesService,
+        editSessions,
+      );
+      pollingService.bot.launch = jest.fn().mockResolvedValue(undefined);
+      pollingService.bot.stop = jest.fn();
+      await pollingService.onModuleInit();
+
+      pollingService.onModuleDestroy();
+
+      expect(pollingService.bot.stop).toHaveBeenCalledWith(
+        'application shutdown',
+      );
+    });
+  });
+
   describe('handlePhoto', () => {
     function makePhotoCtx() {
       return {
@@ -210,6 +278,44 @@ describe('BotService', () => {
         expect.stringContaining("didn't work"),
       );
     });
+
+    it('replies gracefully when the draft is already gone', async () => {
+      editSessions.consume.mockReturnValue({
+        draftId: 'draft-1',
+        field: 'title',
+        expiresAt: Date.now() + 10_000,
+      });
+      recipesService.updateDraftField.mockRejectedValue(
+        new DraftNotFoundException(),
+      );
+      const ctx = makeTextCtx('New Title');
+
+      await (
+        service as unknown as { handleText: (ctx: unknown) => Promise<void> }
+      ).handleText(ctx);
+
+      expect(ctx.reply).toHaveBeenCalledWith(
+        expect.stringContaining('no longer available'),
+      );
+    });
+
+    it('replies with a generic error on an unexpected failure', async () => {
+      editSessions.consume.mockReturnValue({
+        draftId: 'draft-1',
+        field: 'title',
+        expiresAt: Date.now() + 10_000,
+      });
+      recipesService.updateDraftField.mockRejectedValue(new Error('db down'));
+      const ctx = makeTextCtx('New Title');
+
+      await (
+        service as unknown as { handleText: (ctx: unknown) => Promise<void> }
+      ).handleText(ctx);
+
+      expect(ctx.reply).toHaveBeenCalledWith(
+        expect.stringContaining('Something went wrong applying that edit'),
+      );
+    });
   });
 
   describe('handleConfirm', () => {
@@ -266,6 +372,34 @@ describe('BotService', () => {
       );
       expect(ctx.editMessageText).not.toHaveBeenCalled();
     });
+
+    it('replies gracefully when the draft is already gone', async () => {
+      recipesService.confirmDraft.mockRejectedValue(
+        new DraftNotFoundException(),
+      );
+      const ctx = makeActionCtx('draft-1');
+
+      await (
+        service as unknown as { handleConfirm: (ctx: unknown) => Promise<void> }
+      ).handleConfirm(ctx);
+
+      expect(ctx.reply).toHaveBeenCalledWith(
+        expect.stringContaining('no longer available'),
+      );
+    });
+
+    it('replies with a generic error on an unexpected failure', async () => {
+      recipesService.confirmDraft.mockRejectedValue(new Error('db down'));
+      const ctx = makeActionCtx('draft-1');
+
+      await (
+        service as unknown as { handleConfirm: (ctx: unknown) => Promise<void> }
+      ).handleConfirm(ctx);
+
+      expect(ctx.reply).toHaveBeenCalledWith(
+        expect.stringContaining('Something went wrong saving that recipe'),
+      );
+    });
   });
 
   describe('handleReject', () => {
@@ -286,6 +420,25 @@ describe('BotService', () => {
       expect(ctx.editMessageText).toHaveBeenCalledWith(
         expect.stringContaining('discarded'),
       );
+    });
+
+    it('rethrows an unexpected error instead of swallowing it', async () => {
+      recipesService.rejectDraft.mockRejectedValue(new Error('db down'));
+      const ctx = {
+        chat: { id: 123 },
+        match: ['reject:draft-1', 'draft-1'] as unknown as RegExpExecArray,
+        answerCbQuery: jest.fn(),
+        editMessageText: jest.fn(),
+        reply: jest.fn(),
+      };
+
+      await expect(
+        (
+          service as unknown as {
+            handleReject: (ctx: unknown) => Promise<void>;
+          }
+        ).handleReject(ctx),
+      ).rejects.toThrow('db down');
     });
 
     it('replies gracefully when the draft is already gone', async () => {
@@ -363,6 +516,29 @@ describe('BotService', () => {
       expect(ctx.reply).toHaveBeenCalledWith(
         expect.stringContaining('no longer available'),
       );
+    });
+
+    it('rethrows an unexpected error instead of swallowing it', async () => {
+      recipesService.getDraft.mockRejectedValue(new Error('db down'));
+      const ctx = {
+        chat: { id: 123 },
+        match: [
+          'edit:title:draft-1',
+          'title',
+          'draft-1',
+        ] as unknown as RegExpExecArray,
+        answerCbQuery: jest.fn(),
+        reply: jest.fn(),
+      };
+
+      await expect(
+        (
+          service as unknown as {
+            handleEditPrompt: (ctx: unknown) => Promise<void>;
+          }
+        ).handleEditPrompt(ctx),
+      ).rejects.toThrow('db down');
+      expect(editSessions.start).not.toHaveBeenCalled();
     });
   });
 });

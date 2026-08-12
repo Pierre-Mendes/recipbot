@@ -43,6 +43,7 @@ const HELP_TEXT =
 export class BotService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(BotService.name);
   readonly bot: Telegraf;
+  private launched = false;
 
   constructor(
     private readonly config: ConfigService,
@@ -62,6 +63,7 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
     const mode = this.config.get<string>('TELEGRAM_BOT_MODE') ?? 'webhook';
     if (mode === 'polling') {
       await this.bot.launch();
+      this.launched = true;
       this.logger.log('Telegram bot started via long polling');
     } else {
       this.logger.log('Telegram bot ready for webhook updates');
@@ -69,7 +71,12 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
   }
 
   onModuleDestroy(): void {
-    this.bot.stop('application shutdown');
+    // Telegraf.stop() throws if launch() was never called — in the
+    // default webhook mode, updates arrive via TelegramWebhookController
+    // instead, so there is nothing to stop.
+    if (this.launched) {
+      this.bot.stop('application shutdown');
+    }
   }
 
   private registerHandlers(): void {
