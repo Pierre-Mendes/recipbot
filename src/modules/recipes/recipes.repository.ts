@@ -52,6 +52,17 @@ export class RecipesRepository {
     );
     return mapRow(rows[0]);
   }
+
+  async existsForChat(
+    chatId: string,
+    executor: Queryable = this.db,
+  ): Promise<boolean> {
+    const rows = await executor.query<{ exists: boolean }>(
+      `SELECT EXISTS(SELECT 1 FROM recipes WHERE telegram_chat_id = $1) AS exists`,
+      [chatId],
+    );
+    return rows[0]?.exists ?? false;
+  }
 }
 
 function mapRow(row: RecipeRow): Recipe {

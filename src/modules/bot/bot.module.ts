@@ -1,14 +1,16 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { OcrModule } from '../ocr/ocr.module';
+import { ScrapingModule } from '../scraping/scraping.module';
 import { RecipesModule } from '../recipes/recipes.module';
 import { BotService } from './bot.service';
-import { EditSessionStore } from './session/edit-session.store';
+import { WizardCacheService } from './wizard/wizard-cache.service';
+import { WizardService } from './wizard/wizard.service';
 import { TelegramWebhookController } from './telegram-webhook.controller';
 
 @Module({
-  imports: [ConfigModule, OcrModule, RecipesModule],
+  imports: [ConfigModule, OcrModule, ScrapingModule, RecipesModule],
   controllers: [TelegramWebhookController],
-  providers: [BotService, EditSessionStore],
+  providers: [BotService, WizardCacheService, WizardService],
 })
 export class BotModule {}

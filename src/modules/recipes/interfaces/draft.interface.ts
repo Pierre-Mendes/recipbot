@@ -10,6 +10,8 @@ export interface RecipeDraft {
   tags: string[];
   sourceUrl: string | null;
   rawExtractedText: string | null;
+  wizardStep: string | null;
+  collectedFields: Record<string, unknown>;
   createdAt: Date;
   updatedAt: Date;
 }

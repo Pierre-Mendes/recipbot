@@ -175,6 +175,64 @@ describe('Drafts & Recipes repositories (integration)', () => {
 
       expect(await draftsRepository.findById(created.id, CHAT_ID)).toBeNull();
     });
+
+    it('round-trips wizard_step and JSONB collected_fields through Postgres', async () => {
+      const created = await createTestDraft();
+
+      const updated = await draftsRepository.updateWizardState(
+        created.id,
+        CHAT_ID,
+        'observacoes',
+        {
+          observacoes: 'Sem glúten',
+          rendimento: '8 fatias',
+          __reviewReturn: 'title_ingredients',
+        },
+      );
+
+      expect(updated?.wizardStep).toBe('observacoes');
+      expect(updated?.collectedFields).toEqual({
+        observacoes: 'Sem glúten',
+        rendimento: '8 fatias',
+        __reviewReturn: 'title_ingredients',
+      });
+
+      // Re-reading independently confirms it was actually persisted as JSONB, not just returned from the UPDATE.
+      const reread = await draftsRepository.findById(created.id, CHAT_ID);
+      expect(reread?.collectedFields).toEqual(updated?.collectedFields);
+    });
+
+    it('finds the latest in-progress draft for a chat and excludes ones with no wizard_step', async () => {
+      await createTestDraft(); // has no wizardStep set by default in this helper's underlying repo call
+
+      const older = await createTestDraft();
+      await draftsRepository.updateWizardState(older.id, CHAT_ID, 'nome', {});
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      const newer = await createTestDraft();
+      await draftsRepository.updateWizardState(newer.id, CHAT_ID, 'tags', {});
+
+      const latest = await draftsRepository.findLatestInProgress(CHAT_ID);
+      expect(latest?.id).toBe(newer.id);
+    });
+
+    it('clearFields resets typed columns without going through DTO validation', async () => {
+      const created = await createTestDraft();
+
+      const cleared = await draftsRepository.clearFields(created.id, CHAT_ID, [
+        'title',
+        'ingredients',
+      ]);
+
+      expect(cleared?.title).toBeNull();
+      expect(cleared?.ingredients).toEqual([]);
+      expect(cleared?.instructions).toEqual(created.instructions);
+    });
+
+    it('existsForChat reflects whether any draft exists for the chat', async () => {
+      expect(await draftsRepository.existsForChat(OTHER_CHAT_ID)).toBe(false);
+      await createTestDraft();
+      expect(await draftsRepository.existsForChat(CHAT_ID)).toBe(true);
+    });
   });
 
   describe('RecipesService.confirmDraft (transactional insert + delete)', () => {

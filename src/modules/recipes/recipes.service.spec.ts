@@ -22,6 +22,8 @@ function makeDraft(overrides: Partial<RecipeDraft> = {}): RecipeDraft {
     tags: ['sobremesa'],
     sourceUrl: null,
     rawExtractedText: 'raw',
+    wizardStep: null,
+    collectedFields: {},
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -46,12 +48,17 @@ describe('RecipesService', () => {
     draftsRepository = {
       create: jest.fn(),
       findById: jest.fn(),
+      findLatestInProgress: jest.fn(),
+      existsForChat: jest.fn(),
       updateFields: jest.fn(),
+      clearFields: jest.fn(),
+      updateWizardState: jest.fn(),
       updateState: jest.fn(),
       delete: jest.fn(),
     } as unknown as jest.Mocked<DraftsRepository>;
     recipesRepository = {
       create: jest.fn(),
+      existsForChat: jest.fn(),
     } as unknown as jest.Mocked<RecipesRepository>;
     embeddingService = {
       embedDocument: jest.fn(),
@@ -66,16 +73,63 @@ describe('RecipesService', () => {
     );
   });
 
-  describe('createDraftFromExtraction', () => {
-    it('creates a draft with empty tags and no source url from OCR extraction', async () => {
+  describe('hasHistory', () => {
+    it('is false when neither drafts nor recipes exist for the chat', async () => {
+      draftsRepository.existsForChat.mockResolvedValue(false);
+      recipesRepository.existsForChat.mockResolvedValue(false);
+
+      expect(await service.hasHistory('123')).toBe(false);
+    });
+
+    it.each([
+      [true, false],
+      [false, true],
+      [true, true],
+    ])(
+      'is true when drafts=%s or recipes=%s exist',
+      async (hasDrafts, hasRecipes) => {
+        draftsRepository.existsForChat.mockResolvedValue(hasDrafts);
+        recipesRepository.existsForChat.mockResolvedValue(hasRecipes);
+
+        expect(await service.hasHistory('123')).toBe(true);
+      },
+    );
+  });
+
+  describe('createEmptyDraft', () => {
+    it('creates a blank draft at the given wizard step', async () => {
       draftsRepository.create.mockResolvedValue(makeDraft());
 
-      await service.createDraftFromExtraction('123', {
-        title: 'Bolo',
-        ingredients: ['a'],
-        instructions: ['b'],
-        rawExtractedText: 'raw',
+      await service.createEmptyDraft('123', 'nome');
+
+      expect(draftsRepository.create).toHaveBeenCalledWith({
+        chatId: '123',
+        title: null,
+        ingredients: [],
+        instructions: [],
+        tags: [],
+        sourceUrl: null,
+        rawExtractedText: null,
+        wizardStep: 'nome',
+        collectedFields: {},
       });
+    });
+  });
+
+  describe('createDraftFromExtraction', () => {
+    it('creates a draft with empty tags, the given wizard step, and no source url by default', async () => {
+      draftsRepository.create.mockResolvedValue(makeDraft());
+
+      await service.createDraftFromExtraction(
+        '123',
+        {
+          title: 'Bolo',
+          ingredients: ['a'],
+          instructions: ['b'],
+          rawExtractedText: 'raw',
+        },
+        'revisar_titulo_ingredientes',
+      );
 
       expect(draftsRepository.create).toHaveBeenCalledWith({
         chatId: '123',
@@ -85,7 +139,29 @@ describe('RecipesService', () => {
         tags: [],
         sourceUrl: null,
         rawExtractedText: 'raw',
+        wizardStep: 'revisar_titulo_ingredientes',
+        collectedFields: {},
       });
+    });
+
+    it('carries a source url through when provided (link flow)', async () => {
+      draftsRepository.create.mockResolvedValue(makeDraft());
+
+      await service.createDraftFromExtraction(
+        '123',
+        {
+          title: null,
+          ingredients: [],
+          instructions: [],
+          rawExtractedText: 'texto da página',
+        },
+        'revisar_titulo_ingredientes',
+        'https://example.com/receita',
+      );
+
+      expect(draftsRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ sourceUrl: 'https://example.com/receita' }),
+      );
     });
   });
 
@@ -102,6 +178,97 @@ describe('RecipesService', () => {
       await expect(service.getDraft('123', 'missing')).rejects.toThrow(
         DraftNotFoundException,
       );
+    });
+  });
+
+  describe('findLatestInProgressDraft', () => {
+    it('passes through to the repository', async () => {
+      const draft = makeDraft({ wizardStep: 'tags' });
+      draftsRepository.findLatestInProgress.mockResolvedValue(draft);
+
+      await expect(service.findLatestInProgressDraft('123')).resolves.toBe(
+        draft,
+      );
+      expect(draftsRepository.findLatestInProgress).toHaveBeenCalledWith('123');
+    });
+  });
+
+  describe('updateWizardState', () => {
+    it('persists the step and collected fields', async () => {
+      const updated = makeDraft({ wizardStep: 'observacoes' });
+      draftsRepository.updateWizardState.mockResolvedValue(updated);
+
+      const result = await service.updateWizardState(
+        '123',
+        'draft-1',
+        'observacoes',
+        {
+          rendimento: '4 porções',
+        },
+      );
+
+      expect(draftsRepository.updateWizardState).toHaveBeenCalledWith(
+        'draft-1',
+        '123',
+        'observacoes',
+        { rendimento: '4 porções' },
+      );
+      expect(result).toBe(updated);
+    });
+
+    it('throws DraftNotFoundException when the draft does not belong to the chat', async () => {
+      draftsRepository.updateWizardState.mockResolvedValue(null);
+      await expect(
+        service.updateWizardState('123', 'draft-1', 'observacoes', {}),
+      ).rejects.toThrow(DraftNotFoundException);
+    });
+  });
+
+  describe('clearDraftFields', () => {
+    it('passes through to the repository', async () => {
+      const updated = makeDraft({ title: null });
+      draftsRepository.clearFields.mockResolvedValue(updated);
+
+      const result = await service.clearDraftFields('123', 'draft-1', [
+        'title',
+      ]);
+
+      expect(draftsRepository.clearFields).toHaveBeenCalledWith(
+        'draft-1',
+        '123',
+        ['title'],
+      );
+      expect(result).toBe(updated);
+    });
+
+    it('throws DraftNotFoundException when the draft does not belong to the chat', async () => {
+      draftsRepository.clearFields.mockResolvedValue(null);
+      await expect(
+        service.clearDraftFields('123', 'draft-1', ['title']),
+      ).rejects.toThrow(DraftNotFoundException);
+    });
+  });
+
+  describe('getMissingCoreFields', () => {
+    it('returns an empty array when nome/ingredientes/modo de preparo are all present', () => {
+      expect(service.getMissingCoreFields(makeDraft())).toEqual([]);
+    });
+
+    it('lists pt-BR labels for each missing core field', () => {
+      const draft = makeDraft({
+        title: null,
+        ingredients: [],
+        instructions: ['ok'],
+      });
+      expect(service.getMissingCoreFields(draft)).toEqual([
+        'nome',
+        'ingredientes',
+      ]);
+    });
+
+    it('treats a whitespace-only title as missing', () => {
+      const draft = makeDraft({ title: '   ' });
+      expect(service.getMissingCoreFields(draft)).toContain('nome');
     });
   });
 
@@ -177,7 +344,7 @@ describe('RecipesService', () => {
   });
 
   describe('confirmDraft', () => {
-    it('rejects confirmation when required fields are missing', async () => {
+    it('rejects confirmation when required fields are missing and allowIncomplete is false', async () => {
       draftsRepository.findById.mockResolvedValue(
         makeDraft({ title: null, ingredients: [], instructions: [] }),
       );
@@ -220,6 +387,42 @@ describe('RecipesService', () => {
         txQueryable,
       );
       expect(recipe.id).toBe('recipe-1');
+    });
+
+    it('allowIncomplete=true saves successfully even with every core field empty (US07 — never blocks)', async () => {
+      const draft = makeDraft({
+        title: null,
+        ingredients: [],
+        instructions: [],
+        tags: [],
+      });
+      draftsRepository.findById.mockResolvedValue(draft);
+      recipesRepository.create.mockResolvedValue({
+        id: 'recipe-1',
+        telegramChatId: '123',
+        title: '',
+        ingredients: [],
+        instructions: [],
+        tags: [],
+        sourceUrl: null,
+        createdAt: new Date(),
+      });
+
+      const recipe = await service.confirmDraft('123', 'draft-1', true);
+
+      expect(recipe.id).toBe('recipe-1');
+      // Nothing to embed when every field is blank — must not call the embedding API with empty text.
+      expect(embeddingService.embedDocument).not.toHaveBeenCalled();
+    });
+
+    it('allowIncomplete=true still rejects a genuine non-emptiness violation (e.g. an invalid tag)', async () => {
+      const draft = makeDraft({ tags: ['Not Valid!'] });
+      draftsRepository.findById.mockResolvedValue(draft);
+
+      await expect(
+        service.confirmDraft('123', 'draft-1', true),
+      ).rejects.toThrow(DraftValidationException);
+      expect(db.withTransaction).not.toHaveBeenCalled();
     });
   });
 

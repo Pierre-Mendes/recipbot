@@ -81,4 +81,16 @@ describe('RecipesRepository', () => {
     const [, params] = db.query.mock.calls[0];
     expect(params![6]).toBe(`[${embedding.join(',')}]`);
   });
+
+  describe('existsForChat', () => {
+    it('returns true when the query reports a match', async () => {
+      db.query.mockResolvedValue([{ exists: true }]);
+      expect(await repository.existsForChat('123')).toBe(true);
+    });
+
+    it('returns false when there is no row at all', async () => {
+      db.query.mockResolvedValue([]);
+      expect(await repository.existsForChat('123')).toBe(false);
+    });
+  });
 });

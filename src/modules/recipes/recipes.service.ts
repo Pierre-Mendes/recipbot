@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
-import { validate } from 'class-validator';
+import { validate, ValidationError } from 'class-validator';
 import { DatabaseService } from '../../common/database/database.service';
 import { DraftsRepository, UpdatableDraftFields } from './drafts.repository';
 import { RecipesRepository } from './recipes.repository';
@@ -25,6 +25,28 @@ export interface DraftExtractionInput {
   rawExtractedText: string;
 }
 
+/**
+ * class-validator constraint keys that exist purely to enforce "this core
+ * field is non-empty". The wizard treats nome/ingredientes/modo_de_preparo
+ * as never-blocking (docs/bot-conversation-flow.md, US07) — confirmDraft
+ * strips exactly these constraint keys when allowIncomplete is true, so
+ * every *other* rule (max length, tag pattern, URL safety, ...) still
+ * applies even to an intentionally incomplete save.
+ */
+const CORE_EMPTINESS_CONSTRAINTS: Readonly<
+  Record<string, ReadonlyArray<string>>
+> = {
+  title: ['minLength'],
+  ingredients: ['arrayMinSize'],
+  instructions: ['arrayMinSize'],
+};
+
+const CORE_FIELD_LABELS_PT_BR: Readonly<Record<string, string>> = {
+  title: 'nome',
+  ingredients: 'ingredientes',
+  instructions: 'modo de preparo',
+};
+
 @Injectable()
 export class RecipesService {
   constructor(
@@ -34,9 +56,37 @@ export class RecipesService {
     private readonly embeddingService: EmbeddingService,
   ) {}
 
+  /** True if this chat has ever created a draft or a saved recipe — drives conditional onboarding (US05). */
+  async hasHistory(chatId: string): Promise<boolean> {
+    const [hasDrafts, hasRecipes] = await Promise.all([
+      this.draftsRepository.existsForChat(chatId),
+      this.recipesRepository.existsForChat(chatId),
+    ]);
+    return hasDrafts || hasRecipes;
+  }
+
+  async createEmptyDraft(
+    chatId: string,
+    wizardStep: string,
+  ): Promise<RecipeDraft> {
+    return this.draftsRepository.create({
+      chatId,
+      title: null,
+      ingredients: [],
+      instructions: [],
+      tags: [],
+      sourceUrl: null,
+      rawExtractedText: null,
+      wizardStep,
+      collectedFields: {},
+    });
+  }
+
   async createDraftFromExtraction(
     chatId: string,
     extraction: DraftExtractionInput,
+    wizardStep: string,
+    sourceUrl: string | null = null,
   ): Promise<RecipeDraft> {
     return this.draftsRepository.create({
       chatId,
@@ -44,8 +94,10 @@ export class RecipesService {
       ingredients: extraction.ingredients,
       instructions: extraction.instructions,
       tags: [],
-      sourceUrl: null,
+      sourceUrl,
       rawExtractedText: extraction.rawExtractedText,
+      wizardStep,
+      collectedFields: {},
     });
   }
 
@@ -55,6 +107,45 @@ export class RecipesService {
       throw new DraftNotFoundException();
     }
     return draft;
+  }
+
+  async findLatestInProgressDraft(chatId: string): Promise<RecipeDraft | null> {
+    return this.draftsRepository.findLatestInProgress(chatId);
+  }
+
+  async updateWizardState(
+    chatId: string,
+    draftId: string,
+    wizardStep: string | null,
+    collectedFields: Record<string, unknown>,
+  ): Promise<RecipeDraft> {
+    const updated = await this.draftsRepository.updateWizardState(
+      draftId,
+      chatId,
+      wizardStep,
+      collectedFields,
+    );
+    if (!updated) {
+      throw new DraftNotFoundException();
+    }
+    return updated;
+  }
+
+  /** Blanks out typed fields the wizard is jumping past or re-asking (US07 back/forward navigation). */
+  async clearDraftFields(
+    chatId: string,
+    draftId: string,
+    fields: ReadonlyArray<EditableDraftField>,
+  ): Promise<RecipeDraft> {
+    const updated = await this.draftsRepository.clearFields(
+      draftId,
+      chatId,
+      fields,
+    );
+    if (!updated) {
+      throw new DraftNotFoundException();
+    }
+    return updated;
   }
 
   async updateDraftField(
@@ -84,7 +175,29 @@ export class RecipesService {
     return updated;
   }
 
-  async confirmDraft(chatId: string, draftId: string): Promise<Recipe> {
+  /** Pure check — which core fields (pt-BR labels) are still empty, for the soft-warning at final confirmation. */
+  getMissingCoreFields(draft: RecipeDraft): string[] {
+    const missing: string[] = [];
+    if (!draft.title || draft.title.trim().length === 0)
+      missing.push(CORE_FIELD_LABELS_PT_BR.title);
+    if (draft.ingredients.length === 0)
+      missing.push(CORE_FIELD_LABELS_PT_BR.ingredients);
+    if (draft.instructions.length === 0)
+      missing.push(CORE_FIELD_LABELS_PT_BR.instructions);
+    return missing;
+  }
+
+  /**
+   * allowIncomplete=true is the "Salvar assim mesmo" path: nome/ingredientes/
+   * modo_de_preparo are allowed to be empty (US07 — nothing ever hard-blocks
+   * a save), but every other DTO rule (lengths, tag charset, SSRF-checked
+   * URL) still applies.
+   */
+  async confirmDraft(
+    chatId: string,
+    draftId: string,
+    allowIncomplete = false,
+  ): Promise<Recipe> {
     const draft = await this.getDraft(chatId, draftId);
 
     const candidate = plainToInstance(CreateRecipeDto, {
@@ -95,7 +208,10 @@ export class RecipesService {
       tags: draft.tags,
       source_url: draft.sourceUrl ?? undefined,
     });
-    const errors = await validate(candidate, { whitelist: true });
+    let errors = await validate(candidate, { whitelist: true });
+    if (allowIncomplete) {
+      errors = errors.filter((error) => !isCoreEmptinessOnlyError(error));
+    }
     if (errors.length > 0) {
       throw new DraftValidationException(collectMessages(errors));
     }
@@ -106,7 +222,12 @@ export class RecipesService {
       instructions: candidate.instructions,
       tags: candidate.tags,
     });
-    const embedding = await this.embeddingService.embedDocument(embeddingText);
+    // An allowIncomplete save can leave every field empty; embedDocument()
+    // rejects blank input, so skip it rather than crash the save.
+    const embedding =
+      embeddingText.trim().length > 0
+        ? await this.embeddingService.embedDocument(embeddingText)
+        : null;
 
     return this.db.withTransaction(async (queryable) => {
       const recipe = await this.recipesRepository.create(
@@ -139,8 +260,16 @@ export class RecipesService {
   }
 }
 
-function collectMessages(
-  errors: Awaited<ReturnType<typeof validate>>,
-): string[] {
+function isCoreEmptinessOnlyError(error: ValidationError): boolean {
+  const relevantConstraints = CORE_EMPTINESS_CONSTRAINTS[error.property];
+  if (!relevantConstraints) return false;
+  const constraintKeys = Object.keys(error.constraints ?? {});
+  return (
+    constraintKeys.length > 0 &&
+    constraintKeys.every((key) => relevantConstraints.includes(key))
+  );
+}
+
+function collectMessages(errors: ValidationError[]): string[] {
   return errors.flatMap((error) => Object.values(error.constraints ?? {}));
 }

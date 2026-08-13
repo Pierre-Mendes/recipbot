@@ -11,6 +11,13 @@ CREATE TABLE IF NOT EXISTS recipe_drafts (
     tags VARCHAR(50)[] DEFAULT '{}',
     source_url TEXT,
     raw_extracted_text TEXT,
+    -- Wizard progress (docs/bot-conversation-flow.md, US08): wizard_step is
+    -- the current step key; collected_fields holds free-text answers with
+    -- no dedicated column (observacoes, rendimento, tempo_preparo). Both are
+    -- the durable side of the wizard state — the in-memory TTL cache is a
+    -- disposable mirror of this row, always re-derivable from it.
+    wizard_step VARCHAR(50),
+    collected_fields JSONB NOT NULL DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
