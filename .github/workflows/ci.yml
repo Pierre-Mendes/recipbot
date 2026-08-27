@@ -111,6 +111,17 @@ jobs:
       - name: Install Composer dependencies
         run: composer install --no-ansi --no-interaction --no-progress
 
+      # Larastan boots the actual Laravel app to resolve facades (e.g. the
+      # JWTAuth facade's real methods) against their container bindings. Without
+      # an APP_KEY/JWT_SECRET that boot fails silently and every facade method
+      # looks undefined - this bit us on the auth endpoints (JWTAuth::attempt()/
+      # ::factory() flagged as undefined) because this job never set up .env.
+      - name: Setup environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate --ansi
+          php artisan jwt:secret --force
+
       - name: Run PHPStan
         run: composer run phpstan
 
