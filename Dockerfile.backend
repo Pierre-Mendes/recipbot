@@ -16,18 +16,13 @@ RUN apk add --no-cache \
     icu-libs
 
 # Install PHP extensions
+# Note: pdo, ctype, json, mbstring, openssl, posix, tokenizer, xml ship built-in
+# on the php:8.2-cli-alpine base image; only these need building.
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp
 RUN docker-php-ext-install \
-    pdo \
     pdo_pgsql \
     bcmath \
-    ctype \
-    json \
-    mbstring \
-    openssl \
-    tokenizer \
-    xml \
     pcntl \
-    posix \
     gd \
     intl
 
