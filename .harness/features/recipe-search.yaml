@@ -1,0 +1,134 @@
+name: Recipe Search Pipeline
+description: Tag-based and full-text search for recipes
+version: "1.0"
+
+triggers:
+  - api: GET /api/recipes/search?tags=sobremesa,chocolate
+
+input_schema:
+  properties:
+    tags:
+      type: array
+      items:
+        type: string
+    search_query:
+      type: string
+    limit:
+      type: integer
+      default: 20
+      maximum: 100
+    offset:
+      type: integer
+      default: 0
+
+stages:
+  - stage: query_validation
+    description: Validate search parameters
+    input: { tags, search_query, limit, offset }
+    validators:
+      - schema: SearchQuerySchema
+    output: validated_query
+    timeout: 2s
+
+  - stage: authorization_check
+    description: Verify user is authenticated
+    validators:
+      - middleware: auth:api
+    output: authenticated
+
+  - stage: cache_lookup
+    description: Check Redis cache first
+    input: validated_query
+    transformers:
+      - service: CacheService
+        method: get
+        key: "recipes.search.{tags}.{user_id}"
+    output: cache_result
+    on_error: "proceed to database search"
+
+  - stage: database_search
+    description: Query database with optimized GIN index
+    input: { validated_query, cache_result }
+    transformers:
+      - service: RecipeSearchService
+        method: search
+        optimization: "GIN index on tags jsonb column"
+    output: search_results
+    timeout: 500ms
+    performance_target: "< 500ms"
+
+  - stage: result_pagination
+    description: Paginate results
+    input: search_results
+    transformers:
+      - service: PaginationService
+        method: paginate
+        per_page: "{limit}"
+        page: "{offset}"
+    output: paginated_results
+
+  - stage: cache_storage
+    description: Store results in cache
+    input: paginated_results
+    transformers:
+      - service: CacheService
+        method: put
+        key: "recipes.search.{tags}.{user_id}"
+        ttl: 3600  # 1 hour
+    output: cached_results
+
+  - stage: response_formatting
+    description: Format API response
+    input: paginated_results
+    transformers:
+      - transformer: "inline"
+        code: |
+          {
+            data: results.data,
+            pagination: {
+              total: results.total,
+              per_page: results.per_page,
+              current_page: results.current_page,
+              last_page: results.last_page
+            },
+            meta: {
+              search_time_ms: timer.elapsed()
+            }
+          }
+    output: api_response
+
+success_path: "return 200 api_response"
+error_path: "return 500 internal error"
+
+database_optimization:
+  indexes:
+    - name: "idx_recipes_tags"
+      columns: ["tags"]
+      type: "GIN"
+      table: "recipes"
+  queries:
+    - name: "search_by_tags"
+      sql: "SELECT * FROM recipes WHERE user_id = $1 AND tags @> $2 ORDER BY created_at DESC LIMIT $3 OFFSET $4"
+      expected_duration: "< 100ms"
+
+caching:
+  enabled: true
+  provider: "redis"
+  ttl: 3600
+  key_pattern: "recipes.search.{tags}.{user_id}"
+
+performance:
+  targets:
+    - database_query: "< 100ms"
+    - cache_lookup: "< 10ms"
+    - total_pipeline: "< 500ms"
+
+monitoring:
+  metrics:
+    - search.results_count
+    - search.cache_hit_rate
+    - search.average_response_time
+  alerts:
+    - cache_hit_rate < 70%
+    - response_time > 1000ms
+    - results_count == 0 AND query_is_valid

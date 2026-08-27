@@ -1,0 +1,103 @@
+name: Recipe Management Pipeline
+description: Full workflow for managing recipes (create, update, delete)
+version: "1.0"
+
+triggers:
+  - api: POST /api/recipes
+  - api: PATCH /api/recipes/{id}
+  - api: DELETE /api/recipes/{id}
+
+input_schema:
+  properties:
+    action:
+      type: string
+      enum: [create, update, delete]
+    recipe_data:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 255
+        ingredients:
+          type: array
+          items:
+            type: string
+          maxItems: 20
+        tags:
+          type: array
+          items:
+            type: string
+          maxItems: 10
+        source_url:
+          type: string
+          format: uri
+
+stages:
+  - stage: input_validation
+    description: Validate user input
+    input: recipe_data
+    validators:
+      - schema: RecipeSchema
+        strict: true
+    output: validated_data
+    on_error: "return 422 validation error"
+
+  - stage: authorization_check
+    description: Verify user owns recipe (for update/delete)
+    input: { validated_data, recipe_id }
+    validators:
+      - policy: RecipePolicy
+        method: update
+    output: authorized_data
+    on_error: "return 403 forbidden"
+
+  - stage: duplicate_check
+    description: Ensure no duplicate recipes
+    input: validated_data
+    validators:
+      - custom: EnsureNoDuplicates
+    output: checked_data
+    on_error: "return 409 conflict"
+
+  - stage: persistence
+    description: Save recipe to database
+    input: checked_data
+    transformers:
+      - service: RecipeService
+        method: save
+    artifacts:
+      - type: recipe
+        action: create_or_update
+        entity_field: recipe
+    output: persisted_recipe
+    on_error: "rollback transaction"
+
+  - stage: event_publishing
+    description: Publish domain events
+    input: persisted_recipe
+    transformers:
+      - service: EventPublisher
+        method: publish
+        event: RecipeCreated|RecipeUpdated|RecipeDeleted
+    output: published_event
+
+  - stage: cache_invalidation
+    description: Invalidate relevant caches
+    input: persisted_recipe
+    transformers:
+      - service: CacheService
+        method: invalidate
+        keys: ["recipes.all", "recipes.tags", "recipes.{user_id}"]
+    output: cache_cleared
+
+success_path: "return 200 success"
+error_path: "return 500 internal error"
+
+monitoring:
+  metrics:
+    - pipeline.duration
+    - stage.persistence.duration
+    - recipe.created_count
+  alerts:
+    - error_rate > 1%
+    - duration > 5000ms
