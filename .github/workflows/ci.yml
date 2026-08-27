@@ -266,6 +266,7 @@ jobs:
           target: "http://localhost:8000"
           cmd_options: "-a -J report_json.json -r report_html.html -w report_md.md"
           fail_action: false
+          allow_issue_writing: false
 
       # zaproxy/action-baseline doesn't reliably emit a SARIF file under a fixed
       # name, so upload its actual reports as a build artifact instead of guessing.
