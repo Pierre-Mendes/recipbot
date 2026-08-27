@@ -260,8 +260,13 @@ jobs:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
 
+      # continue-on-error: zaproxy/action-baseline also uploads its own internal
+      # artifact via the deprecated Artifacts v1 API, which fails server-side
+      # ("Create Artifact Container failed") independent of scan results. The
+      # scan itself is captured by our own "Upload ZAP reports" step below.
       - name: OWASP ZAP baseline scan
         uses: zaproxy/action-baseline@v0.12.0
+        continue-on-error: true
         with:
           target: "http://localhost:8000"
           cmd_options: "-a -J report_json.json -r report_html.html -w report_md.md"
