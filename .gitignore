@@ -29,7 +29,8 @@ build/
 /storage/framework/cache/
 /storage/framework/sessions/
 /storage/framework/views/
-bootstrap/cache/
+/bootstrap/cache/*
+!/bootstrap/cache/.gitignore
 .phpunit.result.cache
 /storage/phpstan/
 
