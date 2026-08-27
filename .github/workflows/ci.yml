@@ -3,8 +3,11 @@ name: CI
 on:
   push:
     branches: [main, develop]
+  # No branch filter: this repo stacks feature branches on top of each other
+  # (e.g. feat/auth-endpoints -> feat/recipe-management -> main), and a
+  # branch filter here would silently skip CI on any PR whose base isn't
+  # main/develop - which is exactly what happened to PR #3.
   pull_request:
-    branches: [main, develop]
 
 env:
   PHP_VERSION: "8.2"
@@ -193,12 +196,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      # base/head must differ or TruffleHog refuses to scan ("BASE and HEAD
+      # commits are the same"). A hardcoded base of the default branch broke
+      # this on every direct push to that branch (base == head trivially).
+      # Use the PR's base SHA on pull_request events, and the pre-push SHA on
+      # push events (falling back to a full-history scan on a brand new
+      # branch's first push, when `before` is the all-zero SHA).
       - name: TruffleHog secret scan
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
+          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || (github.event.before != '0000000000000000000000000000000000000000' && github.event.before || '') }}
+          head: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.event.after }}
           extra_args: --only-verified
 
   dast:
