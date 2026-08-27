@@ -1,5 +1,5 @@
 -- Enable pgvector extension on startup
-CREATE EXTENSION IF NOT EXISTS pgvector;
+CREATE EXTENSION IF NOT EXISTS vector;
 
 -- Enable JSON operations
 CREATE EXTENSION IF NOT EXISTS plpgsql;
