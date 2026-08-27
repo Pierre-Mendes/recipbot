@@ -29,6 +29,13 @@ RUN docker-php-ext-install \
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
+# Install pcov for test coverage (dev-only, negligible prod overhead)
+# autoconf is re-added here since docker-php-ext-install purges it after building extensions
+RUN apk add --no-cache --virtual .pcov-build-deps autoconf \
+    && pecl install pcov \
+    && docker-php-ext-enable pcov \
+    && apk del .pcov-build-deps
+
 # Set working directory
 WORKDIR /app
 
