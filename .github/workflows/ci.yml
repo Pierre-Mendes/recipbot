@@ -156,12 +156,13 @@ jobs:
       - name: Install Composer dependencies
         run: composer install --no-ansi --no-interaction --no-progress
 
-      # NOTE: as of this workflow's authoring, 3 laravel/framework advisories (medium/high)
-      # have no fix in the 11.x line (fixed only in 12.60+/13.10+). This step is expected to
-      # fail until a deliberate decision is made to upgrade the framework's major version.
-      # See the PR/commit history for the full advisory list.
+      # 3 laravel/framework advisories (medium/high) have no fix in the 11.x line
+      # (fixed only in 12.60+/13.10+). Pierre decided to accept this risk for now
+      # rather than block the pipeline on it - continue-on-error makes this step
+      # show as a warning instead of failing the job/gate.
       - name: Composer audit
         run: composer audit
+        continue-on-error: true
 
   semgrep:
     name: Semgrep SAST
@@ -322,7 +323,7 @@ jobs:
             echo "| Tests + coverage ≥80% | ${{ needs.test.result }} |"
             echo "| PHPStan level 8 | ${{ needs.phpstan.result }} |"
             echo "| Pint style | ${{ needs.pint.result }} |"
-            echo "| composer audit | ${{ needs.security.result }} |"
+            echo "| composer audit | ${{ needs.security.result }} (3 known laravel/framework advisories accepted, see step log) |"
             echo "| Semgrep SAST | ${{ needs.semgrep.result }} |"
             echo "| TruffleHog secrets | ${{ needs.trufflehog.result }} |"
             echo "| OWASP ZAP DAST | ${{ needs.dast.result }} |"
@@ -337,7 +338,7 @@ jobs:
               'Tests + coverage': '${{ needs.test.result }}',
               'PHPStan level 8': '${{ needs.phpstan.result }}',
               'Pint style': '${{ needs.pint.result }}',
-              'composer audit': '${{ needs.security.result }}',
+              'composer audit (3 known advisories accepted)': '${{ needs.security.result }}',
               'Semgrep SAST': '${{ needs.semgrep.result }}',
               'TruffleHog secrets': '${{ needs.trufflehog.result }}',
               'OWASP ZAP DAST': '${{ needs.dast.result }}',
