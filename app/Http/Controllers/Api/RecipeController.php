@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Requests\StoreRecipeRequest;
 use App\Http\Requests\UpdateRecipeRequest;
 use App\Models\Recipe;
+use App\Models\User;
 use App\Services\RecipeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,7 +22,10 @@ class RecipeController
      */
     public function index(Request $request): JsonResponse
     {
-        $recipes = $this->recipes->getUserRecipes($request->user());
+        /** @var User $user */
+        $user = $request->user();
+
+        $recipes = $this->recipes->getUserRecipes($user);
 
         return response()->json([
             'data' => $recipes->items(),
@@ -39,7 +43,10 @@ class RecipeController
      */
     public function store(StoreRecipeRequest $request): JsonResponse
     {
-        $recipe = $this->recipes->create($request->user(), $request->validated());
+        /** @var User $user */
+        $user = $request->user();
+
+        $recipe = $this->recipes->create($user, $request->validated());
 
         return response()->json([
             'data' => $recipe,
