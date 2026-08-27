@@ -16,7 +16,9 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: pgvector/pgvector:pg16-alpine
+        # Plain postgres, not pgvector/pgvector (no such -alpine tag exists, and
+        # nothing migrated yet uses the vector extension anyway).
+        image: postgres:16-alpine
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: recipbot_test
@@ -203,7 +205,8 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: pgvector/pgvector:pg16-alpine
+        # See the `test` job above: plain postgres, no pgvector needed yet.
+        image: postgres:16-alpine
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: recipbot_test
@@ -261,14 +264,21 @@ jobs:
         uses: zaproxy/action-baseline@v0.12.0
         with:
           target: "http://localhost:8000"
-          cmd_options: "-a"
+          cmd_options: "-a -J report_json.json -r report_html.html -w report_md.md"
           fail_action: false
 
-      - name: Upload ZAP SARIF
-        uses: github/codeql-action/upload-sarif@v3
+      # zaproxy/action-baseline doesn't reliably emit a SARIF file under a fixed
+      # name, so upload its actual reports as a build artifact instead of guessing.
+      - name: Upload ZAP reports
+        uses: actions/upload-artifact@v4
         if: always()
         with:
-          sarif_file: report_sarif.sarif
+          name: zap-report
+          path: |
+            report_json.json
+            report_html.html
+            report_md.md
+          if-no-files-found: warn
 
   docker:
     name: Docker build (backend)
