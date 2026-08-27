@@ -1,10 +1,13 @@
 FROM postgres:16-alpine
 
 # Install build dependencies for pgvector
+# clang21 pinned to match this image's `pg_config --configure` CLANG=clang-21 (LLVM bitcode/JIT build)
 RUN apk add --no-cache \
     build-base \
     postgresql-dev \
-    git
+    git \
+    clang21 \
+    llvm21
 
 # Install pgvector from source
 RUN git clone --depth 1 https://github.com/pgvector/pgvector.git /tmp/pgvector && \
