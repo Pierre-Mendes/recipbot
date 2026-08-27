@@ -1,44 +1,189 @@
 services:
-  app:
+  # PostgreSQL Database with pgvector extension
+  postgres:
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: recipbot_app
-    restart: unless-stopped
-    ports:
-      - "${PORT:-3000}:3000"
+      dockerfile: Dockerfile.postgres
+    container_name: recipbot-postgres
     environment:
-      - NODE_OPTIONS=--dns-result-order=ipv4first
-      - NODE_ENV=development
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-recipbot}?schema=public
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      - TELEGRAM_BOT_MODE=${TELEGRAM_BOT_MODE:-webhook}
-      - TELEGRAM_WEBHOOK_SECRET=${TELEGRAM_WEBHOOK_SECRET}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - GEMINI_VISION_MODEL=${GEMINI_VISION_MODEL:-gemini-2.0-flash}
-      - GEMINI_EMBEDDING_MODEL=${GEMINI_EMBEDDING_MODEL:-text-embedding-004}
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  postgres:
-    image: pgvector/pgvector:pg16
-    container_name: recipbot_postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-recipbot}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: recipbot
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./docs/database-schema.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-recipbot}"]
-      interval: 5s
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d recipbot" ]
+      interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - recipbot_network
+
+  # Redis Cache & Queue
+  redis:
+    image: redis:7-alpine
+    container_name: recipbot-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - recipbot_network
+
+  # Laravel Backend
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: recipbot-app
+    environment:
+      APP_NAME: RecipBot
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8000
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: recipbot
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      QUEUE_CONNECTION: redis
+      SESSION_DRIVER: redis
+      CACHE_DRIVER: redis
+      BROADCAST_DRIVER: redis
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/app
+      - /app/vendor
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: php artisan serve --host=0.0.0.0 --port=8000
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - recipbot_network
+
+  # Laravel Queue Worker
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: recipbot-queue
+    environment:
+      APP_NAME: RecipBot
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8000
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: recipbot
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      QUEUE_CONNECTION: redis
+    volumes:
+      - ./:/app
+      - /app/vendor
+      - /app/node_modules
+    depends_on:
+      - postgres
+      - redis
+      - app
+    command: php artisan queue:listen redis --tries=3 --timeout=90
+    networks:
+      - recipbot_network
+
+  # Laravel Scheduler
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: recipbot-scheduler
+    environment:
+      APP_NAME: RecipBot
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8000
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: recipbot
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    volumes:
+      - ./:/app
+      - /app/vendor
+      - /app/node_modules
+    depends_on:
+      - postgres
+      - redis
+      - app
+    command: /bin/sh -c "while true; do php artisan schedule:run; sleep 60; done"
+    networks:
+      - recipbot_network
+
+  # Vue 3 Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: recipbot-frontend
+    environment:
+      VITE_API_URL: http://localhost:8000/api
+      VITE_APP_NAME: RecipBot
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - app
+    command: npm run dev -- --host
+    networks:
+      - recipbot_network
+
+  # Database Admin (Debug Only)
+  adminer:
+    image: adminer:latest
+    container_name: recipbot-adminer
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    depends_on:
+      - postgres
+    networks:
+      - recipbot_network
+    profiles:
+      - debug
 
 volumes:
-  pgdata:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  recipbot_network:
+    driver: bridge

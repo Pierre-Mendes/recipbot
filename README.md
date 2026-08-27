@@ -1,130 +1,164 @@
-# RecipBot
+# 📦 RecipBot MVP - Pasta Final Setup
 
-A free, intelligent recipe management assistant over Telegram. Save recipes by text, screenshot (OCR), or link through a step-by-step wizard, then search your collection later by tag or natural language (hybrid keyword + vector search). **The bot only ever replies in pt-BR**, regardless of the code/comment language.
+Esta pasta contém **todos os arquivos prontos** para começar o desenvolvimento do RecipBot MVP.
 
-## How it works
-
-```
-/nova → 📝 Texto | 📷 Imagem/Print | 🔗 Link do site
-                                        │
-                          (Imagem/Link: Gemini Vision OCR or an
-                           SSRF-guarded scraper pre-fills a part;
-                           user confirms or edits it)
-                                        │
-                                        ▼
-      Wizard: nome → ingredientes → modo de preparo → observações →
-      rendimento → tempo de preparo → link → tags  (recipe_drafts:
-      wizard_step + collected_fields — all steps skippable via "Pular",
-      /retroceder and /avancar jump between them, /cancelar abandons)
-                                        │
-                                        ▼
-                 Confirmação (soft warning, never a hard block, if
-                 nome/ingredientes/modo de preparo are still empty)
-                                        │
-                                        ▼
-        Salvar → Gemini embedding computed → Recipe (recipes) →
-                  draft deleted, atomically
-```
-
-- **Ingestion (US01/US06)**: start with `/nova` and pick Texto, Imagem, or Link. A photo runs Gemini Vision OCR; a link runs an SSRF-guarded scrape (cheerio, public http(s) hosts only). Either pre-fills part of the wizard, shown for confirm/edit before continuing.
-- **Human-in-the-loop wizard (US03/US05–US08)**: conditional onboarding on `/start` (full welcome for a first-time chat, a short greeting otherwise), then a step-by-step collection flow. `nome`/`ingredientes`/`modo de preparo` are the core fields but never hard-block progress — every step, core or optional, has a "Pular" button. `/retroceder` and `/avancar` list steps to jump between (jumping re-asks everything from that point on); `/cancelar` abandons the draft. At final confirmation, empty core fields trigger a soft warning (`💾 Salvar assim mesmo` / `✏️ Completar agora`) instead of a block. In-progress wizard state lives in a 30-minute in-memory TTL cache (warnings at 20/15/10 minutes left) mirroring `recipe_drafts.wizard_step`/`collected_fields`; on expiry the draft itself is untouched and resuming is offered on the next interaction.
-- **Optional source link (US02)**: the link step accepts a Reels/video/site URL, SSRF-validated the same way as the Link ingestion path.
-- **Hybrid search (US04)**: search by tag (Postgres GIN index), natural language (pgvector cosine similarity over Gemini embeddings), or both at once.
-
-## Tech stack
-
-- **Runtime**: Node.js 20, NestJS, TypeScript
-- **Bot**: [Telegraf](https://telegraf.js.org/) (webhook-first, with long-polling for local dev)
-- **AI**: Google Gemini — Vision for OCR, `text-embedding-004` for embeddings — via `@google/generative-ai` and LangChain's `@langchain/google-genai`
-- **Database**: PostgreSQL + [pgvector](https://github.com/pgvector/pgvector), accessed with raw parameterized SQL (`pg`), no ORM
-- **Scraping**: cheerio, behind a DNS-resolution-time SSRF guard
-- **Validation**: `class-validator` / `class-transformer` DTOs
-- **Testing**: Jest (unit + integration), against a real Dockerized Postgres for integration tests
-
-## Project layout
+## 📁 Conteúdo
 
 ```
-src/
-  common/
-    database/     pooled pg client, parameterized query + transaction helpers
-    security/     SSRF IP-range checks, constant-time secret comparison
-    validators/   OWASP-focused sanitization (control-char stripping, SSRF-aware URL validator)
-  modules/
-    ocr/          Gemini Vision extraction, image validation (magic-byte sniffing)
-    scraping/     cheerio + runtime SSRF guard for optional source links
-    rag/          Gemini embeddings + hybrid (tag/vector) search
-    recipes/      DTOs, drafts/recipes repositories, the use-case layer (RecipesService)
-    bot/          Telegraf handlers, webhook controller, and bot/wizard/ (the
-                  step-by-step state machine: steps, TTL cache, pt-BR presenter)
-docs/              product docs the codebase was built from (user stories, schema, business rules)
-test/              integration tests that run against a real Postgres container
+recipbot-setup-final/
+├── README.md                          (este arquivo)
+├── QUICK_START.md                     (5 minutos setup)
+├── SETUP_INSTRUCTIONS.md              (guia completo)
+├── setup.sh                           (script automático)
+├── OWASP_CHECKLIST.md                 (segurança validada)
+├── CLAUDE_PROMPT_START.md             (8 prompts prontos)
+│
+├── CLAUDE.md                          (overview projeto)
+├── constitution.md                    (princípios + padrões)
+├── HARNESS-GUIDE.md                   (como usar harness)
+│
+├── docker-compose.yml                 (orquestração)
+├── .env.example                       (variáveis padrão)
+├── .gitignore                         (git config)
+│
+├── .harness/                          (pipelines declarativos)
+│   └── features/
+│       ├── recipe-management.yaml
+│       └── recipe-search.yaml
+│
+├── specs/                             (especificações)
+│   ├── constitution.md (link)
+│   ├── recipe-management.spec.md
+│   └── recipe-search.spec.md
+│
+├── docs/                              (documentação)
+│   ├── ARCHITECTURE.md
+│   ├── API-SPEC.md
+│   ├── DATABASE-SCHEMA.md
+│   ├── SETUP.md
+│   └── DEPLOYMENT.md
+│
+├── .claude/                           (configurações Claude Code)
+│   ├── subagents.yaml
+│   └── config.json
+│
+└── .github/                           (CI/CD)
+    └── workflows/
+        ├── test.yml
+        └── lint.yml
 ```
 
-Roughly: `bot` (Handlers) → `recipes` (Use Cases → Repositories) → `ocr`/`scraping`/`rag` (supporting services) → Postgres.
+---
 
-## Getting started
+## ⚡ Como Usar Esta Pasta
 
-### Prerequisites
+### Passo 1: Download
+Baixe e descompacte esta pasta em seu computador.
 
-- Docker & Docker Compose
-- A [Telegram bot token](https://core.telegram.org/bots#how-do-i-create-a-bot) (from [@BotFather](https://t.me/BotFather))
-- A [Gemini API key](https://ai.google.dev/) (free tier is enough)
+### Passo 2: Copiar para Projeto
+```bash
+# Se já tem repo clonado:
+cd /path/to/recipbot
 
-### Run with Docker Compose
+# Copie todos os arquivos desta pasta para a raiz do projeto
+cp -r /path/to/recipbot-setup-final/* .
+
+# Ou, se preferir fazer manualmente:
+# 1. Copie SETUP_INSTRUCTIONS.md para ./
+# 2. Copie setup.sh para ./
+# 3. Copie CLAUDE.md, constitution.md, etc para ./
+# 4. Copie .harness/ para ./
+# 5. Copie specs/ para ./
+# 6. Copie docs/ para ./
+# 7. Copie .claude/ para ./
+# 8. Copie .github/ para ./
+```
+
+### Passo 3: Executar Setup
+```bash
+chmod +x setup.sh
+./setup.sh
+```
+
+### Passo 4: Docker
+```bash
+docker-compose up --build
+```
+
+### Passo 5: Começar
+Leia `QUICK_START.md` para próximos passos.
+
+---
+
+## 📋 Arquivos Principais
+
+### Instruções
+- **QUICK_START.md** - 5 minutos para rodar
+- **SETUP_INSTRUCTIONS.md** - Guia completo
+- **setup.sh** - Script automático
+
+### Documentação
+- **CLAUDE.md** - Overview + tech stack
+- **constitution.md** - Princípios + padrões
+- **HARNESS-GUIDE.md** - Como trabalhar
+
+### Segurança
+- **OWASP_CHECKLIST.md** - 10 controles validados
+
+### Para Claude Code
+- **CLAUDE_PROMPT_START.md** - 8 prompts prontos
+
+---
+
+## ✅ Checklist Antes de Começar
+
+- [ ] Pasta descompactada
+- [ ] Arquivos copiados para projeto
+- [ ] `chmod +x setup.sh` executado
+- [ ] `./setup.sh` rodou sem erros
+- [ ] `docker-compose up --build` iniciado
+- [ ] http://localhost:5173 acessível
+- [ ] Leu QUICK_START.md
+- [ ] Pronto para disparar prompts! 🚀
+
+---
+
+## 🎯 Próximo Passo
+
+1. Descompacte esta pasta
+2. Copie arquivos para seu projeto
+3. Execute `./setup.sh`
+4. Rode `docker-compose up --build`
+5. Leia `QUICK_START.md`
+6. Dispare primeiro prompt para Claude Code (em `CLAUDE_PROMPT_START.md`)
+
+---
+
+## 📞 Arquivos Importantes
+
+Depois de setup, **LEIA NESTA ORDEM**:
+
+1. **QUICK_START.md** (5 min)
+2. **CLAUDE.md** (10 min)
+3. **constitution.md** (10 min)
+4. **HARNESS-GUIDE.md** (15 min)
+5. **CLAUDE_PROMPT_START.md** (reference)
+
+---
+
+## 🚀 Pronto?
+
+Se tudo OK após setup:
 
 ```bash
-cp .env.example .env
-# fill in TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET, GEMINI_API_KEY
-
-docker compose up --build
+# Leia arquivos acima, depois:
+claude < CLAUDE_PROMPT_START.md
 ```
 
-This builds the app image, starts Postgres with the `pgvector` extension and schema already applied (`docs/database-schema.sql` runs automatically on first boot), and starts the bot. The app waits for Postgres's healthcheck before starting.
+E comece a implementação! 🎉
 
-### Bot connectivity: webhook vs. polling
+---
 
-- **`TELEGRAM_BOT_MODE=webhook`** (default) — the app exposes `POST /telegram/webhook`, guarded by a constant-time comparison against `TELEGRAM_WEBHOOK_SECRET` (sent by Telegram as the `X-Telegram-Bot-Api-Secret-Token` header). You'll need a public HTTPS URL registered with Telegram (`setWebhook`) pointing at this route.
-- **`TELEGRAM_BOT_MODE=polling`** — for local development without a public URL; the bot long-polls Telegram directly.
-
-### Local development without Docker
-
-```bash
-npm install
-npm run start:dev   # requires DATABASE_URL pointing at a running Postgres+pgvector instance
-```
-
-## Environment variables
-
-See [`.env.example`](.env.example) for the full list with defaults. The essentials:
-
-| Variable | Required | Notes |
-|---|---|---|
-| `DATABASE_URL` | yes | Postgres connection string |
-| `TELEGRAM_BOT_TOKEN` | yes | from @BotFather |
-| `TELEGRAM_BOT_MODE` | no | `webhook` (default) or `polling` |
-| `TELEGRAM_WEBHOOK_SECRET` | yes, in webhook mode | validated on every webhook request |
-| `GEMINI_API_KEY` | yes | used for both Vision (OCR) and embeddings |
-| `GEMINI_VISION_MODEL` | no | defaults to `gemini-3.6-flash` |
-| `GEMINI_EMBEDDING_MODEL` | no | defaults to `text-embedding-004` (768 dims — must match `docs/database-schema.sql`'s `VECTOR(768)` column if changed) |
-
-## Testing
-
-```bash
-npm test              # unit tests, fully mocked (no external services)
-npm run test:cov       # unit tests with coverage (enforced threshold: 80%)
-npm run test:integration   # integration tests — requires a running Postgres (docker compose up -d postgres)
-```
-
-Integration tests exercise real SQL against a live Postgres+pgvector instance — the GIN tag index, pgvector cosine similarity ordering, and the transactional draft-confirmation flow — while mocking only the external Gemini API calls.
-
-## Security notes
-
-- **SSRF protection** on every user-supplied URL: a DTO-time literal check (`IsPublicHttpUrl`) plus a DNS-resolution-time guard in the scraping module that re-validates on every redirect hop, closing the DNS-rebinding gap a literal check alone can't catch.
-- **Input sanitization**: all recipe text is control-character-stripped and length-capped via `class-validator` DTOs before it reaches the database or an LLM prompt.
-- **Chat scoping**: every draft/recipe read or write is scoped to the requesting Telegram chat at the SQL level — a recipe from one chat can never be read, edited, or listed by another.
-- **Webhook authentication**: the Telegram webhook endpoint validates the secret token with a constant-time comparison to avoid timing side-channels.
-- **Parameterized SQL** throughout; no string-built queries.
-
-## License
-
-MIT
+**Versão**: 1.0  
+**Status**: Pronto para usar  
+**Tempo de Setup**: 5 minutos

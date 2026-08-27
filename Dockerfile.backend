@@ -1,0 +1,63 @@
+FROM php:8.2-cli-alpine
+
+# Install system dependencies
+RUN apk add --no-cache \
+    curl \
+    git \
+    wget \
+    bash \
+    build-base \
+    libpq-dev \
+    libpng-dev \
+    libjpeg-turbo-dev \
+    libwebp-dev \
+    freetype-dev \
+    icu-dev \
+    icu-libs
+
+# Install PHP extensions
+RUN docker-php-ext-install \
+    pdo \
+    pdo_pgsql \
+    bcmath \
+    ctype \
+    json \
+    mbstring \
+    openssl \
+    tokenizer \
+    xml \
+    pcntl \
+    posix \
+    gd \
+    intl
+
+# Install Composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# Set working directory
+WORKDIR /app
+
+# Create non-root user
+RUN addgroup -g 1000 laravel && \
+    adduser -D -u 1000 -G laravel laravel
+
+# Copy application files
+COPY . .
+
+# Install PHP dependencies
+RUN composer install --no-interaction --prefer-dist --optimize-autoloader
+
+# Set permissions
+RUN chown -R laravel:laravel /app
+
+# Switch to non-root user
+USER laravel
+
+# Expose port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]

@@ -1,0 +1,23 @@
+FROM postgres:16-alpine
+
+# Install build dependencies for pgvector
+RUN apk add --no-cache \
+    build-base \
+    postgresql-dev \
+    git
+
+# Install pgvector from source
+RUN git clone --depth 1 https://github.com/pgvector/pgvector.git /tmp/pgvector && \
+    cd /tmp/pgvector && \
+    make && \
+    make install && \
+    rm -rf /tmp/pgvector
+
+# Create init script to enable pgvector extension
+RUN mkdir -p /docker-entrypoint-initdb.d/
+COPY ./init-pgvector.sql /docker-entrypoint-initdb.d/
+
+# Clean up
+RUN apk del build-base postgresql-dev git
+
+EXPOSE 5432

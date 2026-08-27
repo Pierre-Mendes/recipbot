@@ -1,26 +1,93 @@
-# Dependencies
-node_modules/
-
-# Build output
-dist/
-build/
-
 # Environment
 .env
 .env.local
 .env.*.local
+.env.backup
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Node
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+.pnpm-debug.log
+dist/
+build/
+
+# Laravel
+/vendor/
+/storage/logs/*
+/storage/app/*
+!/storage/app/.gitkeep
+/storage/framework/cache/
+/storage/framework/sessions/
+/storage/framework/views/
+bootstrap/cache/
+.phpunit.result.cache
+
+# Docker
+.dockerignore
+
+# Database
+*.sqlite
+*.sqlite3
+
+# OS
+Thumbs.db
+.DS_Store
 
 # Logs
 *.log
-npm-debug.log*
 
-# Test coverage
+# Coverage
 coverage/
-coverage-integration/
+.nyc_output/
+coverage.xml
 
-# IDE / OS
-.idea/
-.vscode/
+# Testing
+.phpunit.xml
+phpunit.xml
+pytest.ini
+jest.config.js
+
+# Build artifacts
+dist/
+build/
+out/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Backend
+app/cache/
+app/logs/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
 *.swp
-.DS_Store
-Thumbs.db
+
+# Secrets (NEVER COMMIT THESE)
+.env
+.env.production.local
+.env.staging.local
+.aws/credentials
+.aws/config
+*.pem
+*.key
+*.crt
+
+# Archives
+*.zip
+*.tar.gz
+*.rar
