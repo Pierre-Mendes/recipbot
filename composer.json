@@ -14,6 +14,7 @@
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
+        "larastan/larastan": "^3.10",
         "laravel/pail": "^1.1",
         "laravel/pint": "^1.13",
         "laravel/sail": "^1.26",
@@ -21,6 +22,7 @@
         "nunomaduro/collision": "^8.1",
         "pestphp/pest": "^3.8",
         "pestphp/pest-plugin-laravel": "^3.2",
+        "phpstan/phpstan": "^2.2",
         "phpunit/phpunit": "^11.0.1"
     },
     "autoload": {
@@ -54,7 +56,9 @@
         "dev": [
             "Composer\\Config::disableProcessTimeout",
             "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1\" \"php artisan pail --timeout=0\" \"npm run dev\" --names=server,queue,logs,vite"
-        ]
+        ],
+        "phpstan": "phpstan analyse --memory-limit=1G",
+        "pint": "pint"
     },
     "extra": {
         "laravel": {
