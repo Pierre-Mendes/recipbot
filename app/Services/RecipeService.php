@@ -18,6 +18,7 @@ class RecipeService
         return $user->recipes()->create([
             'title' => $data['title'],
             'ingredients' => $data['ingredients'],
+            'instructions' => $data['instructions'] ?? [],
             'tags' => $data['tags'] ?? [],
             'source_url' => $data['source_url'] ?? null,
         ]);
