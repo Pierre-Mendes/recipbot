@@ -309,6 +309,8 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     needs: [test, phpstan, pint, security, semgrep, trufflehog, dast]
+    permissions:
+      pull-requests: write
     steps:
       - name: Summarize results
         run: |
