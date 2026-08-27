@@ -15,5 +15,6 @@ Route::prefix('auth')->group(function () {
 });
 
 Route::middleware('auth:api')->group(function () {
+    Route::post('recipes/from-url', [RecipeController::class, 'fromUrl']);
     Route::apiResource('recipes', RecipeController::class);
 });
