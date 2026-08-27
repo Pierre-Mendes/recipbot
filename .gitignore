@@ -52,8 +52,6 @@ coverage/
 coverage.xml
 
 # Testing
-.phpunit.xml
-phpunit.xml
 pytest.ini
 jest.config.js
 
