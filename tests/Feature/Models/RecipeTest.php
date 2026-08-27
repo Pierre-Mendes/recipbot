@@ -4,7 +4,7 @@ use App\Models\Recipe;
 use App\Models\User;
 use Illuminate\Support\Facades\Validator;
 
-function validateRecipe(array $overrides = []): \Illuminate\Contracts\Validation\Validator
+function validateRecipe(array $overrides = []): Illuminate\Contracts\Validation\Validator
 {
     $data = array_merge([
         'title' => 'Bolo de Chocolate',

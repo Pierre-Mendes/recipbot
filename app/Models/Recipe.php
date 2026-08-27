@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\RecipeFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,7 +11,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Recipe extends Model
 {
-    /** @use HasFactory<\Database\Factories\RecipeFactory> */
+    /** @use HasFactory<RecipeFactory> */
     use HasFactory, HasUuids, SoftDeletes;
 
     /**
@@ -76,7 +77,7 @@ class Recipe extends Model
     }
 
     /**
-     * @return BelongsTo<User, Recipe>
+     * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo
     {

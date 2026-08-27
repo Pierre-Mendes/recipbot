@@ -1,0 +1,359 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  PHP_VERSION: "8.2"
+  PHP_EXTENSIONS: pdo, pdo_pgsql, mbstring, xml, json, bcmath, redis
+
+jobs:
+  test:
+    name: Test (backend)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        # Plain postgres, not pgvector/pgvector (no such -alpine tag exists, and
+        # nothing migrated yet uses the vector extension anyway).
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: recipbot_test
+        options: >-
+          --health-cmd "pg_isready -U postgres -d recipbot_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ${{ env.PHP_EXTENSIONS }}
+          coverage: pcov
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+
+      - name: Install Composer dependencies
+        run: composer install --no-ansi --no-interaction --no-progress
+
+      - name: Setup environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate --ansi
+          php artisan jwt:secret --force
+
+      - name: Run migrations
+        run: php artisan migrate --force --no-interaction
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_DATABASE: recipbot_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+
+      - name: Run tests with coverage (min 80%)
+        run: php artisan test --coverage --min=80
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_DATABASE: recipbot_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+
+  phpstan:
+    name: PHPStan (level 8)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ${{ env.PHP_EXTENSIONS }}
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+
+      - name: Install Composer dependencies
+        run: composer install --no-ansi --no-interaction --no-progress
+
+      - name: Run PHPStan
+        run: composer run phpstan
+
+  pint:
+    name: Pint (code style)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ${{ env.PHP_EXTENSIONS }}
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+
+      - name: Install Composer dependencies
+        run: composer install --no-ansi --no-interaction --no-progress
+
+      - name: Run Pint
+        run: composer run pint -- --test
+
+  security:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ${{ env.PHP_EXTENSIONS }}
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+
+      - name: Install Composer dependencies
+        run: composer install --no-ansi --no-interaction --no-progress
+
+      # 3 laravel/framework advisories (medium/high) have no fix in the 11.x line
+      # (fixed only in 12.60+/13.10+). Pierre decided to accept this risk for now
+      # rather than block the pipeline on it - continue-on-error makes this step
+      # show as a warning instead of failing the job/gate.
+      - name: Composer audit
+        run: composer audit
+        continue-on-error: true
+
+  semgrep:
+    name: Semgrep SAST
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    container:
+      image: returntocorp/semgrep
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Semgrep
+        run: semgrep scan --config=p/security-audit --config=p/owasp-top-ten --sarif --output=semgrep.sarif
+        continue-on-error: true
+
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: semgrep.sarif
+
+  trufflehog:
+    name: TruffleHog secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog secret scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified
+
+  dast:
+    name: OWASP ZAP baseline scan
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        # See the `test` job above: plain postgres, no pgvector needed yet.
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: recipbot_test
+        options: >-
+          --health-cmd "pg_isready -U postgres -d recipbot_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ${{ env.PHP_EXTENSIONS }}
+
+      - name: Install Composer dependencies
+        run: composer install --no-ansi --no-interaction --no-progress
+
+      - name: Setup environment and boot app
+        run: |
+          cp .env.example .env
+          php artisan key:generate --ansi
+          php artisan jwt:secret --force
+          php artisan migrate --force --no-interaction
+          php artisan serve --host=0.0.0.0 --port=8000 &
+          sleep 3
+          curl --fail http://localhost:8000/health
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_DATABASE: recipbot_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+
+      # continue-on-error: zaproxy/action-baseline also uploads its own internal
+      # artifact via the deprecated Artifacts v1 API, which fails server-side
+      # ("Create Artifact Container failed") independent of scan results. The
+      # scan itself is captured by our own "Upload ZAP reports" step below.
+      - name: OWASP ZAP baseline scan
+        uses: zaproxy/action-baseline@v0.12.0
+        continue-on-error: true
+        with:
+          target: "http://localhost:8000"
+          cmd_options: "-a -J report_json.json -r report_html.html -w report_md.md"
+          fail_action: false
+          allow_issue_writing: false
+
+      # zaproxy/action-baseline doesn't reliably emit a SARIF file under a fixed
+      # name, so upload its actual reports as a build artifact instead of guessing.
+      - name: Upload ZAP reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zap-report
+          path: |
+            report_json.json
+            report_html.html
+            report_md.md
+          if-no-files-found: warn
+
+  docker:
+    name: Docker build (backend)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.backend
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  quality_gate:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [test, phpstan, pint, security, semgrep, trufflehog, dast]
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Summarize results
+        run: |
+          {
+            echo "## Quality Gate Summary"
+            echo ""
+            echo "| Check | Result |"
+            echo "|---|---|"
+            echo "| Tests + coverage ≥80% | ${{ needs.test.result }} |"
+            echo "| PHPStan level 8 | ${{ needs.phpstan.result }} |"
+            echo "| Pint style | ${{ needs.pint.result }} |"
+            echo "| composer audit | ${{ needs.security.result }} (3 known laravel/framework advisories accepted, see step log) |"
+            echo "| Semgrep SAST | ${{ needs.semgrep.result }} |"
+            echo "| TruffleHog secrets | ${{ needs.trufflehog.result }} |"
+            echo "| OWASP ZAP DAST | ${{ needs.dast.result }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const results = {
+              'Tests + coverage': '${{ needs.test.result }}',
+              'PHPStan level 8': '${{ needs.phpstan.result }}',
+              'Pint style': '${{ needs.pint.result }}',
+              'composer audit (3 known advisories accepted)': '${{ needs.security.result }}',
+              'Semgrep SAST': '${{ needs.semgrep.result }}',
+              'TruffleHog secrets': '${{ needs.trufflehog.result }}',
+              'OWASP ZAP DAST': '${{ needs.dast.result }}',
+            };
+            const lines = Object.entries(results).map(([name, result]) => {
+              const icon = result === 'success' ? '✅' : result === 'skipped' ? '⚪' : '❌';
+              return `${icon} ${name}: ${result}`;
+            });
+            const allPassing = Object.values(results).every(r => r === 'success' || r === 'skipped');
+            const header = allPassing
+              ? '**✅ Quality Gate passed — ready for human review.**'
+              : '**❌ Quality Gate found issues — see the failing checks below.**';
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `${header}\n\n${lines.join('\n')}`,
+            });

@@ -31,12 +31,15 @@ class RecipeService
     public function update(Recipe $recipe, array $data): Recipe
     {
         $recipe->update($data);
+        $recipe->refresh();
 
-        return $recipe->fresh();
+        return $recipe;
     }
 
     /**
      * Get a user's recipes, newest first, paginated.
+     *
+     * @return LengthAwarePaginator<int, Recipe>
      */
     public function getUserRecipes(User $user, int $perPage = 20): LengthAwarePaginator
     {
