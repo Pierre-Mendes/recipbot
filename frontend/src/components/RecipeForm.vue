@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
 import type { FromUrlInput, Recipe, RecipeFormInput } from '@/types'
 
@@ -22,6 +22,20 @@ const title = ref(props.recipe?.title ?? '')
 const ingredientsText = ref(props.recipe?.ingredients.join('\n') ?? '')
 const tagsText = ref(props.recipe?.tags.join(', ') ?? '')
 const sourceUrl = ref(props.recipe?.source_url ?? '')
+
+// The edit page fetches the recipe after mount, so `recipe` arrives as a
+// prop update rather than being present on first render - sync the fields
+// when that happens instead of only reading it once at setup.
+watch(
+  () => props.recipe,
+  (recipe) => {
+    if (!recipe) return
+    title.value = recipe.title
+    ingredientsText.value = recipe.ingredients.join('\n')
+    tagsText.value = recipe.tags.join(', ')
+    sourceUrl.value = recipe.source_url ?? ''
+  },
+)
 
 const importUrl = ref('')
 const importTagsText = ref('')

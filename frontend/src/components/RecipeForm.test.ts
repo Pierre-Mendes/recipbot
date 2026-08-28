@@ -62,4 +62,30 @@ describe('RecipeForm', () => {
     expect(screen.queryByRole('button', { name: 'Import from URL' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
   })
+
+  it('fills the fields once the recipe prop arrives after mount', async () => {
+    // The edit page renders this form before its getRecipe() fetch
+    // resolves, so `recipe` starts null and updates later as a prop change
+    // rather than being present on first render.
+    const { rerender } = render(RecipeForm, { props: { recipe: null } })
+
+    expect(screen.getByLabelText('Title')).toHaveValue('')
+
+    await rerender({
+      recipe: {
+        id: 'uuid-1',
+        user_id: 1,
+        title: 'Bolo',
+        ingredients: ['farinha', 'acucar'],
+        tags: ['sobremesa'],
+        source_url: null,
+        created_at: '',
+        updated_at: '',
+      },
+    })
+
+    expect(screen.getByLabelText('Title')).toHaveValue('Bolo')
+    expect(screen.getByLabelText('Ingredients (one per line)')).toHaveValue('farinha\nacucar')
+    expect(screen.getByLabelText('Tags (comma separated)')).toHaveValue('sobremesa')
+  })
 })
