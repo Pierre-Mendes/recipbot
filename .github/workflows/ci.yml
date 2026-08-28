@@ -102,7 +102,9 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          # jsdom 30's undici dependency calls a webidl API Node 20 lacks
+          # ("webidl.util.markAsUncloneable is not a function"); 22+ has it.
+          node-version: "22"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
