@@ -63,24 +63,19 @@ describe('RecipeForm', () => {
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
   })
 
-  it('fills the fields once the recipe prop arrives after mount', async () => {
-    // The edit page renders this form before its getRecipe() fetch
-    // resolves, so `recipe` starts null and updates later as a prop change
-    // rather than being present on first render.
-    const { rerender } = render(RecipeForm, { props: { recipe: null } })
-
-    expect(screen.getByLabelText('Title')).toHaveValue('')
-
-    await rerender({
-      recipe: {
-        id: 'uuid-1',
-        user_id: 1,
-        title: 'Bolo',
-        ingredients: ['farinha', 'acucar'],
-        tags: ['sobremesa'],
-        source_url: null,
-        created_at: '',
-        updated_at: '',
+  it('fills the fields from an already-loaded recipe at mount', () => {
+    render(RecipeForm, {
+      props: {
+        recipe: {
+          id: 'uuid-1',
+          user_id: 1,
+          title: 'Bolo',
+          ingredients: ['farinha', 'acucar'],
+          tags: ['sobremesa'],
+          source_url: null,
+          created_at: '',
+          updated_at: '',
+        },
       },
     })
 

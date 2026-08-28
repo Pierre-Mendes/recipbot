@@ -56,7 +56,9 @@ async function handleSubmitFromUrl(input: FromUrlInput) {
       {{ recipeId ? 'Edit Recipe' : 'Add Recipe' }}
     </h1>
     <p v-if="error" class="mb-4 text-sm text-red-600">{{ error }}</p>
+    <p v-if="recipeId && !recipe" class="text-sm text-gray-500">Loading...</p>
     <RecipeForm
+      v-else
       :recipe="recipe"
       :loading="loading"
       @submit="handleSubmit"
