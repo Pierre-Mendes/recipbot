@@ -14,6 +14,10 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    // The forks pool crashes jsdom/undici ("webidl.util.markAsUncloneable is
+    // not a function") on the Node version the CI runner installs; threads
+    // avoids the incompatibility.
+    pool: 'threads',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
     coverage: {
