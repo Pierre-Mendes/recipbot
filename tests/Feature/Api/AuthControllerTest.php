@@ -41,6 +41,68 @@ class AuthControllerTest extends TestCase
         $response->assertStatus(422)->assertJsonValidationErrors(['email']);
     }
 
+    public function test_cannot_register_with_duplicate_email_of_different_case(): void
+    {
+        User::factory()->create(['email' => 'taken@example.com']);
+
+        $response = $this->postJson('/api/auth/register', [
+            'name' => 'Someone Else',
+            'email' => 'Taken@Example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors(['email']);
+    }
+
+    public function test_register_stores_email_normalized_to_lowercase(): void
+    {
+        $this->postJson('/api/auth/register', [
+            'name' => 'Pierre Mendes',
+            'email' => 'Pierre@Example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ])->assertStatus(201);
+
+        $this->assertDatabaseHas('users', ['email' => 'pierre@example.com']);
+        $this->assertDatabaseMissing('users', ['email' => 'Pierre@Example.com']);
+    }
+
+    public function test_can_reregister_email_of_a_soft_deleted_user(): void
+    {
+        $deleted = User::factory()->create(['email' => 'gone@example.com']);
+        $deleted->delete();
+
+        $response = $this->postJson('/api/auth/register', [
+            'name' => 'New Owner',
+            'email' => 'gone@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ]);
+
+        $response->assertStatus(201);
+        $this->assertDatabaseHas('users', ['email' => 'gone@example.com', 'name' => 'New Owner']);
+    }
+
+    public function test_register_is_throttled_after_five_attempts(): void
+    {
+        for ($i = 0; $i < 5; $i++) {
+            $this->postJson('/api/auth/register', [
+                'name' => 'Pierre Mendes',
+                'email' => 'short',
+                'password' => 'short',
+                'password_confirmation' => 'different',
+            ])->assertStatus(422);
+        }
+
+        $this->postJson('/api/auth/register', [
+            'name' => 'Pierre Mendes',
+            'email' => 'short',
+            'password' => 'short',
+            'password_confirmation' => 'different',
+        ])->assertStatus(429);
+    }
+
     public function test_cannot_register_with_mismatched_password_confirmation(): void
     {
         $response = $this->postJson('/api/auth/register', [
@@ -80,6 +142,22 @@ class AuthControllerTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonStructure(['access_token', 'token_type', 'expires_in'])
             ->assertJson(['token_type' => 'Bearer']);
+    }
+
+    public function test_can_login_with_email_of_different_case(): void
+    {
+        User::factory()->create([
+            'email' => 'pierre@example.com',
+            'password' => Hash::make('password123'),
+        ]);
+
+        $response = $this->postJson('/api/auth/login', [
+            'email' => 'Pierre@Example.com',
+            'password' => 'password123',
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJsonStructure(['access_token', 'token_type', 'expires_in']);
     }
 
     public function test_cannot_login_with_wrong_password(): void
