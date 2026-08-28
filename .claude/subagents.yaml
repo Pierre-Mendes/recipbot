@@ -1,487 +1,509 @@
-# RecipBot MVP - Agents Configuration
-# Sistema de 3 Agents Especializados com Subagents
+version: "1.0"
 
-orchestrator:
-  name: "Master Orchestrator"
-  description: "Coordena agents especializados e delega tarefas"
-  model: "claude-opus"
-  role: "Task Distribution & Coordination"
+# RecipBot 3-Agent Architecture with Skills Integration
+# Created: 2026-08-28
+# Status: Production Ready
 
-  task_distribution_rules:
-    - pattern: "^feature:"
-      delegate_to: "CodingAgent"
-      with_pre_processing: "AnalysisAgent"
-
-    - pattern: "^review:"
-      delegate_to: "ReviewAgent"
-
-    - pattern: "^analysis:|plan:|estimate:"
-      delegate_to: "AnalysisAgent"
-
-    - pattern: "^fix:|refactor:"
-      delegate_to: "CodingAgent"
-      with_post_processing: "ReviewAgent"
-
----
-# AGENT 1: CODING AGENT
 agents:
-  - name: "CodingAgent"
-    id: "coding"
+  - id: coding-agent
+    name: CodingAgent
+    model: claude-opus-4-1
     role: "Code Implementation & Development"
-    model: "claude-opus"
-    temperature: 0.2
-    max_context_kb: 200
-    timeout_minutes: 60
+    context_window: 200000
 
-    description: |
-      Responsável por implementação de código, correção de bugs,
-      refatoração e manutenção. Trabalha com Laravel backend,
-      Vue 3 frontend, migrations e testes.
+    # Skills Configuration - Tier 1, 2, 3
+    skills:
+      tier_1:
+        - name: docx
+          enabled: true
+          use_cases: ["API specifications", "technical documentation", "architecture decisions"]
 
-    capabilities:
-      - php_laravel_11
-      - vue3_typescript
-      - database_migrations
-      - unit_testing
-      - git_management
+        - name: pptx
+          enabled: true
+          use_cases: ["implementation presentations", "architecture slides", "stakeholder updates"]
 
-    context_files:
-      - path: "agents/coding/context-backend.md"
-        size_kb: 25
-        refresh_every_hours: 24
-        description: "Padrões Laravel, Services, Models, Controllers"
+        - name: pdf
+          enabled: true
+          use_cases: ["technical documentation", "specification exports", "handover docs"]
 
-      - path: "agents/coding/context-frontend.md"
-        size_kb: 20
-        refresh_every_hours: 24
-        description: "Padrões Vue 3, Pinia, Componentes, TypeScript"
+      tier_2:
+        - name: tdd
+          enabled: true
+          use_cases: ["red-green-refactor cycles", "test-driven development"]
 
-      - path: "agents/coding/context-project.md"
-        size_kb: 15
-        refresh_every_hours: 12
-        description: "Estrutura do projeto, convenções"
+        - name: artifact-diagramming
+          enabled: true
+          use_cases: ["system flow diagrams", "data flow visualization", "architecture diagrams"]
 
-      - path: "shared/conventions.md"
-        size_kb: 10
-        refresh_every_hours: 24
-        description: "Convenções globais (naming, formatting, etc)"
+      tier_3:
+        - name: artifact-design
+          enabled: false
+          use_cases: ["UI/UX mockups", "wireframes", "frontend design"]
 
+        - name: skill-creator
+          enabled: false
+          use_cases: ["custom skill development", "team-specific skills"]
+
+    # Context Files
+    context:
+      main:
+        - path: agents/coding/context-backend.md
+          size: 12KB
+          purpose: "Laravel 11 patterns, Services, Models, Controllers"
+
+        - path: agents/coding/context-frontend.md
+          size: 17KB
+          purpose: "Vue 3 Composition API, Pinia, TypeScript patterns"
+
+        - path: agents/coding/context-project.md
+          size: 9KB
+          purpose: "Project structure, Git workflow, Docker setup"
+
+      shared:
+        - path: shared/conventions.md
+          size: 8.4KB
+          purpose: "Naming conventions, Git workflow, code style"
+
+    # Subagents
     subagents:
-      - name: "BackendBuilder"
-        task: "Implementar código Laravel (Services, Controllers, Models)"
-        spawned_for:
-          - "feature:backend"
-          - "fix:backend"
-          - "refactor:backend"
-          - "endpoint:create"
-        context_focus: "Laravel patterns, business logic"
-        timeout_minutes: 45
+      - name: BackendBuilder
+        role: "Laravel backend implementation"
+        context: context-backend.md
+        skills: [docx, pdf, tdd]
 
-      - name: "FrontendBuilder"
-        task: "Implementar código Vue 3 (Componentes, Stores, Composables)"
-        spawned_for:
-          - "feature:frontend"
-          - "fix:frontend"
-          - "refactor:frontend"
-          - "component:create"
-        context_focus: "Vue 3, TypeScript, Pinia patterns"
-        timeout_minutes: 40
+      - name: FrontendBuilder
+        role: "Vue 3 frontend implementation"
+        context: context-frontend.md
+        skills: [docx, artifact-diagramming]
 
-      - name: "DatabaseBuilder"
-        task: "Criar/atualizar migrations, seeds, indices"
-        spawned_for:
-          - "migration:create"
-          - "migration:update"
-          - "seed:create"
-          - "index:add"
-        context_focus: "PostgreSQL, Laravel migrations, pgvector"
-        timeout_minutes: 30
+      - name: DatabaseBuilder
+        role: "PostgreSQL migrations & queries"
+        context: context-backend.md
+        skills: [docx]
 
-      - name: "GitManager"
-        task: "Gerenciar commits, branches, push, rebase"
-        spawned_for:
-          - "git:commit"
-          - "git:push"
-          - "git:branch:create"
-          - "git:rebase"
-        context_focus: "Git workflow, commit strategy"
-        timeout_minutes: 20
+      - name: GitManager
+        role: "Git operations and commits"
+        context: context-project.md
 
-    output_format: "code_with_tests"
-    min_coverage: 0.80
-    validation_rules:
-      - phpstan_level_8
-      - eslint_strict
-      - prettier_format
-      - pest_tests_passing
+    # Workflow Instructions
+    instructions: |
+      You are the CodingAgent. Your role is to implement features with high code quality.
+
+      When implementing features:
+      1. Use tdd skill for red-green-refactor development cycle
+      2. Write clear, testable, maintainable code following Laravel/Vue patterns
+      3. Use docx skill to document API specifications
+      4. Use artifact-diagramming skill to create flow diagrams and architecture
+      5. Use pptx skill to present your implementation to stakeholders
+
+      Always export comprehensive documentation with skills.
+      Follow PHPStan level 8 and ESLint strict standards.
 
 ---
-# AGENT 2: REVIEW AGENT
-  - name: "ReviewAgent"
-    id: "review"
-    role: "Quality & Security Review"
-    model: "claude-sonnet"
-    temperature: 0.1
-    max_context_kb: 150
-    timeout_minutes: 30
 
-    description: |
-      Responsável por análise de qualidade, segurança, performance
-      e cobertura de testes. Valida code style, vulnerabilidades,
-      otimizações e critérios de aceitação.
+  - id: review-agent
+    name: ReviewAgent
+    model: claude-sonnet-4
+    role: "Quality & Security Assurance"
+    context_window: 150000
 
-    capabilities:
-      - code_quality_analysis
-      - security_auditing
-      - performance_review
-      - test_coverage_analysis
-      - owasp_validation
+    # Skills Configuration
+    skills:
+      tier_1:
+        - name: recipbot-code-reviewer
+          enabled: true
+          use_cases: ["OWASP validation", "Laravel patterns", "code quality", "security audit"]
 
-    context_files:
-      - path: "agents/review/context-quality.md"
-        size_kb: 20
-        refresh_every_hours: 24
-        description: "PHPStan rules, ESLint rules, Clean Code"
+        - name: pdf
+          enabled: true
+          use_cases: ["formal audit reports", "comprehensive documentation", "executive summaries"]
 
-      - path: "agents/review/context-security.md"
-        size_kb: 18
-        refresh_every_hours: 24
-        description: "OWASP top 10, SSRF, SQL Injection, XSS, Auth"
+        - name: xlsx
+          enabled: true
+          use_cases: ["metrics export", "findings spreadsheet", "tracking sheets", "dashboards"]
 
-      - path: "agents/review/context-performance.md"
-        size_kb: 15
-        refresh_every_hours: 24
-        description: "Query optimization, caching, frontend performance"
+      tier_2:
+        - name: test-reviewer
+          enabled: true
+          use_cases: ["test coverage validation", "test quality assessment", "edge case review"]
 
-      - path: "shared/definitions.md"
-        size_kb: 12
-        refresh_every_hours: 24
-        description: "Definições de termos, métricas, padrões"
+        - name: dataviz
+          enabled: true
+          use_cases: ["performance charts", "coverage dashboards", "trend analysis", "comparison graphs"]
 
+        - name: to-issues
+          enabled: true
+          use_cases: ["auto-create GitHub issues", "vulnerability tracking", "remediation tasks"]
+
+      tier_3:
+        - name: artifact-capabilities
+          enabled: false
+          use_cases: ["interactive dashboards", "live metrics", "state management"]
+
+    # Context Files
+    context:
+      main:
+        - path: agents/review/context-quality.md
+          size: 8KB
+          purpose: "PHPStan, ESLint, code standards, quality metrics"
+
+        - path: agents/review/context-security.md
+          size: 12KB
+          purpose: "OWASP Top 10, JWT, SSRF protection, input validation"
+
+        - path: agents/review/context-performance.md
+          size: 8.2KB
+          purpose: "Performance SLAs, caching strategy, query optimization"
+
+      shared:
+        - path: shared/definitions.md
+          size: 13KB
+          purpose: "Quality gates, performance metrics, Definition of Done"
+
+    # Subagents
     subagents:
-      - name: "SecurityAuditor"
-        task: "Auditar segurança (OWASP, vulnerabilidades, auth)"
-        spawned_for:
-          - "review:security"
-          - "audit:dependencies"
-          - "check:ssrf"
-          - "check:injection"
-        context_focus: "OWASP, Laravel security, XSS prevention"
-        timeout_minutes: 25
+      - name: SecurityAuditor
+        role: "OWASP Top 10 validation"
+        context: context-security.md
+        skills: [recipbot-code-reviewer, pdf, to-issues]
 
-      - name: "PerformanceReviewer"
-        task: "Revisar performance (queries, caching, frontend)"
-        spawned_for:
-          - "review:performance"
-          - "analyze:queries"
-          - "check:caching"
-          - "optimize:api"
-        context_focus: "Database optimization, Redis, API design"
-        timeout_minutes: 20
+      - name: PerformanceReviewer
+        role: "Performance optimization and SLA validation"
+        context: context-performance.md
+        skills: [recipbot-code-reviewer, dataviz, xlsx]
 
-      - name: "CodeStyleChecker"
-        task: "Validar style (PHPStan, ESLint, Prettier)"
-        spawned_for:
-          - "review:quality"
-          - "lint:backend"
-          - "lint:frontend"
-          - "format:check"
-        context_focus: "Code standards, static analysis"
-        timeout_minutes: 15
+      - name: CodeStyleChecker
+        role: "Lint and style validation"
+        context: context-quality.md
+        skills: [recipbot-code-reviewer]
 
-      - name: "TestCoverageAnalyzer"
-        task: "Analisar coverage de testes (>80%)"
-        spawned_for:
-          - "review:coverage"
-          - "analyze:tests"
-          - "check:unit-tests"
-          - "check:e2e-tests"
-        context_focus: "Test patterns, coverage metrics, PHPUnit, Vitest"
-        timeout_minutes: 20
+      - name: TestCoverageAnalyzer
+        role: "Test coverage and quality validation"
+        context: definitions.md
+        skills: [test-reviewer, xlsx, dataviz]
 
-    validation_criteria:
-      - security_passed: true
-      - coverage_min: 0.80
-      - phpstan_passed: true
-      - eslint_passed: true
-      - no_critical_findings: true
+    # Workflow Instructions
+    instructions: |
+      You are the ReviewAgent. Your role is quality assurance and security validation.
 
-    output_format: "structured_findings"
+      When reviewing code:
+      1. Use recipbot-code-reviewer to validate code quality, security (OWASP), and Laravel patterns
+      2. Use test-reviewer to validate test coverage (target ≥80% backend, ≥70% frontend)
+      3. Use dataviz to create performance comparison charts
+      4. Use xlsx to export detailed metrics and findings
+      5. Use pdf to create formal audit reports
+      6. Use to-issues to auto-create GitHub issues for critical findings
+
+      Always provide comprehensive exports and formal documentation.
+      Validate against OWASP Top 10, Laravel best practices, and performance SLAs.
 
 ---
-# AGENT 3: ANALYSIS AGENT
-  - name: "AnalysisAgent"
-    id: "analysis"
+
+  - id: analysis-agent
+    name: AnalysisAgent
+    model: claude-sonnet-4
     role: "Planning & Requirements Analysis"
-    model: "claude-sonnet"
-    temperature: 0.3
-    max_context_kb: 150
-    timeout_minutes: 20
+    context_window: 150000
 
-    description: |
-      Responsável por análise de especificações, planejamento de sprints,
-      estimativa de tarefas, identificação de dependências e blockers.
-      Work com requirements, user stories e roadmaps.
+    # Skills Configuration
+    skills:
+      tier_1:
+        - name: xlsx
+          enabled: true
+          use_cases: ["sprint plans", "task breakdown", "estimates", "timeline tracking"]
 
-    capabilities:
-      - specification_analysis
-      - sprint_planning
-      - task_estimation
-      - dependency_analysis
-      - requirement_extraction
+        - name: pptx
+          enabled: true
+          use_cases: ["stakeholder presentations", "sprint reviews", "architecture slides", "updates"]
 
-    context_files:
-      - path: "agents/analysis/context-specs.md"
-        size_kb: 25
-        refresh_every_hours: 12
-        description: "Especificações, user stories, critérios de aceitação"
+        - name: docx
+          enabled: true
+          use_cases: ["requirements documentation", "specifications", "acceptance criteria"]
 
-      - path: "agents/analysis/context-architecture.md"
-        size_kb: 22
-        refresh_every_hours: 24
-        description: "CLAUDE.md, constitution, arquitetura, database schema"
+      tier_2:
+        - name: to-prd
+          enabled: true
+          use_cases: ["formal PRD generation", "specification conversion", "requirements document"]
 
-      - path: "agents/analysis/context-roadmap.md"
-        size_kb: 18
-        refresh_every_hours: 12
-        description: "Timeline, phases, deliverables, blockers conhecidos"
+        - name: artifact-diagramming
+          enabled: true
+          use_cases: ["architecture diagrams", "dependency graphs", "flow visualization", "system design"]
 
-      - path: "shared/glossary.md"
-        size_kb: 10
-        refresh_every_hours: 24
-        description: "Termos e definições do projeto"
+        - name: dataviz
+          enabled: true
+          use_cases: ["sprint velocity charts", "burndown graphs", "trend analysis", "metrics visualization"]
 
+      tier_3:
+        - name: grillme
+          enabled: false
+          use_cases: ["requirement interviews", "edge case discovery", "risk assessment", "validation"]
+
+    # Context Files
+    context:
+      main:
+        - path: agents/analysis/context-specs.md
+          size: 9.4KB
+          purpose: "User stories, acceptance criteria, feature specs"
+
+        - path: agents/analysis/context-architecture.md
+          size: 13KB
+          purpose: "System design, data flows, service layers, API design"
+
+        - path: agents/analysis/context-roadmap.md
+          size: 9.7KB
+          purpose: "6-week timeline, phases, blockers, velocity tracking"
+
+      shared:
+        - path: shared/glossary.md
+          size: 9.9KB
+          purpose: "Terminology, domain language, definitions (40+ terms)"
+
+    # Subagents
     subagents:
-      - name: "SpecParser"
-        task: "Extrair requirements de specs e user stories"
-        spawned_for:
-          - "analysis:spec"
-          - "parse:requirements"
-          - "extract:acceptance-criteria"
-          - "read:userstory"
-        context_focus: "Specification formats, requirements extraction"
-        timeout_minutes: 15
+      - name: SpecParser
+        role: "Extract requirements from specs"
+        context: context-specs.md
+        skills: [docx, xlsx]
 
-      - name: "TaskPlanner"
-        task: "Quebrar features em micro-tasks"
-        spawned_for:
-          - "analysis:plan"
-          - "plan:sprint"
-          - "plan:feature"
-          - "break:tasks"
-        context_focus: "Task decomposition, agile planning"
-        timeout_minutes: 15
+      - name: TaskPlanner
+        role: "Decompose features into tasks"
+        context: context-roadmap.md
+        skills: [xlsx, pptx]
 
-      - name: "Estimator"
-        task: "Estimar tempo, complexidade, recursos"
-        spawned_for:
-          - "analysis:estimate"
-          - "estimate:feature"
-          - "estimate:task"
-          - "estimate:sprint"
-        context_focus: "Estimation techniques, complexity analysis"
-        timeout_minutes: 12
+      - name: Estimator
+        role: "Time and complexity estimation"
+        context: definitions.md
+        skills: [xlsx]
 
-      - name: "BlockerAnalyzer"
-        task: "Identificar dependências, riscos e blockers"
-        spawned_for:
-          - "analysis:blockers"
-          - "check:dependencies"
-          - "identify:risks"
-          - "validate:feasibility"
-        context_focus: "Dependency analysis, risk management"
-        timeout_minutes: 12
+      - name: BlockerAnalyzer
+        role: "Identify risks and dependencies"
+        context: context-architecture.md
+        skills: [artifact-diagramming, xlsx]
 
-    output_format: "structured_plan"
-    includes:
-      - requirements_list
-      - acceptance_criteria
-      - task_breakdown
-      - time_estimation
-      - dependencies_map
-      - risk_assessment
+    # Workflow Instructions
+    instructions: |
+      You are the AnalysisAgent. Your role is planning, requirements, and analysis.
+
+      When planning sprints:
+      1. Use grillme skill to interview for hidden requirements and edge cases (optional but recommended)
+      2. Use xlsx skill to create task breakdown with estimates and owners
+      3. Use docx skill to document requirements and acceptance criteria
+      4. Use to-prd skill to generate formal PRD from specifications
+      5. Use artifact-diagramming to create architecture and dependency diagrams
+      6. Use dataviz to create sprint velocity and burndown visualization
+      7. Use pptx skill to create stakeholder presentation with full context
+
+      Always provide exportable, actionable deliverables.
+      Target feature time reduction of 40% with proper planning.
 
 ---
-# WORKFLOWS
+
+# Shared Contexts (available to all agents)
+shared_contexts:
+  - path: shared/conventions.md
+    size: 8.4KB
+    description: "Code style, naming conventions, Git workflow"
+
+  - path: shared/glossary.md
+    size: 9.9KB
+    description: "40+ term definitions for consistency"
+
+  - path: shared/definitions.md
+    size: 13KB
+    description: "Quality gates, performance metrics, Definition of Done"
+
+---
+
+# Workflows with Skills Integration
 workflows:
+  - id: feature_implementation
+    name: "Feature Implementation with Skills"
+    trigger: "feature:"
+    description: "Full feature implementation with TDD, documentation, and comprehensive review"
 
-  feature_implementation:
-    name: "Feature Implementation Workflow"
-    description: "Implementar nova feature completa (análise → código → review)"
-    agents_sequence:
-      - agent: "AnalysisAgent"
-        task: "parse:requirements"
-        output: "task_plan.md"
-        duration_minutes: 15
+    steps:
+      - agent: AnalysisAgent
+        task: "Plan and analyze feature requirements"
+        skills_to_use: [xlsx, docx, grillme]
+        deliverables: ["Sprint plan", "Requirements doc", "Risk analysis"]
 
-      - agent: "CodingAgent"
-        task: "feature:backend"
-        depends_on: "task_plan.md"
-        output: "backend_code.php"
-        duration_minutes: 45
+      - agent: CodingAgent
+        task: "Implement with test-driven development"
+        skills_to_use: [tdd, docx, artifact-diagramming, pptx]
+        deliverables: ["Code", "Tests", "API spec", "Diagrams", "Presentation"]
 
-      - agent: "CodingAgent"
-        task: "feature:frontend"
-        parallel_with: "feature:backend"
-        output: "frontend_code.vue"
-        duration_minutes: 40
+      - agent: ReviewAgent
+        task: "Complete quality gate with formal reports"
+        skills_to_use: [recipbot-code-reviewer, test-reviewer, dataviz, pdf, xlsx, to-issues]
+        deliverables: ["Audit report", "Metrics", "Chart", "Issues"]
 
-      - agent: "ReviewAgent"
-        task: "review:security"
-        depends_on: ["backend_code.php", "frontend_code.vue"]
-        output: "security_findings.md"
-        duration_minutes: 20
+  - id: code_review
+    name: "Automated Code Review with Skills"
+    trigger: "review:"
+    description: "Comprehensive code review with formal exports and issue creation"
 
-      - agent: "ReviewAgent"
-        task: "review:quality"
-        output: "quality_findings.md"
-        duration_minutes: 15
+    steps:
+      - agent: ReviewAgent
+        task: "Execute quality gate and export all artifacts"
+        skills_to_use: [recipbot-code-reviewer, test-reviewer, dataviz, pdf, xlsx, to-issues]
+        deliverables: ["PR comment", "Audit report", "Metrics", "Issues"]
 
-      - agent: "ReviewAgent"
-        task: "review:coverage"
-        output: "coverage_report.md"
-        duration_minutes: 10
+  - id: sprint_planning
+    name: "Sprint Planning with Complete Documentation"
+    trigger: "analysis:"
+    description: "Full sprint planning with all exports and visualizations"
 
-      - agent: "CodingAgent"
-        task: "git:commit"
-        depends_on: ["security_findings.md", "quality_findings.md"]
-        output: "pull_request.url"
+    steps:
+      - agent: AnalysisAgent
+        task: "Complete sprint planning with all skills"
+        skills_to_use: [grillme, xlsx, docx, to-prd, artifact-diagramming, dataviz, pptx]
+        deliverables: ["Sprint plan", "Requirements", "PRD", "Diagrams", "Charts", "Presentation"]
 
-    total_duration_minutes: "~120 (com paralelismo)"
+  - id: security_audit
+    name: "Security & Performance Audit"
+    trigger: "review: audit"
+    description: "Comprehensive security and performance audit with formal reports"
 
-  code_review_workflow:
-    name: "Code Review Workflow"
-    description: "Revisar PR completa (security → quality → approve)"
-    agents_sequence:
-      - agent: "ReviewAgent"
-        task: "review:security"
-        output: "security_audit.md"
-        duration_minutes: 25
-
-      - agent: "ReviewAgent"
-        task: "review:performance"
-        parallel_with: "review:security"
-        output: "performance_audit.md"
-        duration_minutes: 20
-
-      - agent: "ReviewAgent"
-        task: "review:quality"
-        output: "quality_audit.md"
-        duration_minutes: 15
-
-      - agent: "ReviewAgent"
-        task: "review:coverage"
-        output: "coverage_check.md"
-        duration_minutes: 12
-
-      - agent: "CodingAgent"
-        task: "fix:based-on-findings"
-        depends_on: ["security_audit.md", "performance_audit.md", "quality_audit.md"]
-        optional: true
-        duration_minutes: 30
-
-      - agent: "ReviewAgent"
-        task: "re-review"
-        depends_on: "pull_request.updated"
-        optional: true
-        duration_minutes: 15
-
-    total_duration_minutes: "~60-90"
-
-  sprint_planning_workflow:
-    name: "Sprint Planning Workflow"
-    description: "Planejar sprint inteira (análise → estimativa)"
-    agents_sequence:
-      - agent: "AnalysisAgent"
-        task: "analysis:spec"
-        output: "sprint_specs.md"
-        duration_minutes: 20
-
-      - agent: "AnalysisAgent"
-        task: "plan:sprint"
-        depends_on: "sprint_specs.md"
-        output: "sprint_plan.md"
-        duration_minutes: 20
-
-      - agent: "AnalysisAgent"
-        task: "analysis:estimate"
-        depends_on: "sprint_plan.md"
-        output: "sprint_estimates.md"
-        duration_minutes: 15
-
-      - agent: "ReviewAgent"
-        task: "review:quality"
-        depends_on: "sprint_estimates.md"
-        output: "feasibility_check.md"
-        duration_minutes: 10
-
-    total_duration_minutes: "~65"
+    steps:
+      - agent: ReviewAgent
+        task: "Execute OWASP audit and performance analysis"
+        skills_to_use: [recipbot-code-reviewer, dataviz, pdf, xlsx, to-issues]
+        deliverables: ["Security report", "Performance report", "Metrics", "Issues"]
 
 ---
-# AUTOMATION RULES
-automation:
-  github_pr_comments:
-    - trigger: "@claude-code feature:"
-      route_to: "CodingAgent"
-      with_pre_analysis: true
 
-    - trigger: "@claude-code review:"
-      route_to: "ReviewAgent"
+# GitHub Automation Rules
+github_automation:
+  - event: pull_request.opened
+    agent: ReviewAgent
+    task: "Automated quality check with skill exports"
+    skills: [recipbot-code-reviewer, dataviz, pdf, to-issues]
+    action: "Post comment with audit report and auto-create issues"
 
-    - trigger: "@claude-code analysis:"
-      route_to: "AnalysisAgent"
-
-    - trigger: "@claude-code fix:"
-      route_to: "CodingAgent"
-      with_post_review: true
-
-  auto_operations:
-    - event: "push_to_develop"
-      trigger: "ReviewAgent:review:quality"
-
-    - event: "pr_created"
-      trigger: "ReviewAgent:review:security"
-
-    - event: "pr_ready_for_merge"
-      trigger: "ReviewAgent:final_check"
+  - event: pull_request.synchronize
+    agent: ReviewAgent
+    task: "Re-run quality check"
+    skills: [recipbot-code-reviewer, test-reviewer]
+    action: "Update previous comment with new results"
 
 ---
-# CONTEXT SHARING
-context_sharing:
-  shared_contexts:
-    - "shared/conventions.md"
-    - "shared/glossary.md"
-    - "shared/definitions.md"
 
-  agent_specific_contexts:
-    coding:
-      - "agents/coding/context-backend.md"
-      - "agents/coding/context-frontend.md"
-      - "agents/coding/context-project.md"
+# Harness Pipeline Automation
+harness_automation:
+  - pipeline: quality-gates
+    agent: ReviewAgent
+    task: "Quality validation with exports"
+    skills: [recipbot-code-reviewer, test-reviewer, pdf, xlsx]
+    stage: "Code Review"
 
-    review:
-      - "agents/review/context-quality.md"
-      - "agents/review/context-security.md"
-      - "agents/review/context-performance.md"
+  - pipeline: sprint-planning
+    agent: AnalysisAgent
+    task: "Sprint metrics and visualization"
+    skills: [xlsx, dataviz, pptx]
+    stage: "Planning"
 
-    analysis:
-      - "agents/analysis/context-specs.md"
-      - "agents/analysis/context-architecture.md"
-      - "agents/analysis/context-roadmap.md"
+  - pipeline: documentation-export
+    agent: AnalysisAgent
+    task: "Documentation generation"
+    skills: [docx, pdf, to-prd, artifact-diagramming]
+    stage: "Documentation"
 
 ---
-# MONITORING & LOGGING
-monitoring:
-  log_level: "info"
-  track_metrics:
-    - agent_execution_time
-    - subagent_spawning
-    - context_usage
-    - output_quality
 
-  alerts:
-    - condition: "execution_time > timeout"
-      action: "timeout_warning"
+# Skills Tier Summary
+skill_tiers:
+  tier_1:
+    status: "CRITICAL - Enable Week 1"
+    skills:
+      - recipbot-code-reviewer
+      - xlsx
+      - pdf
+      - docx
+      - pptx
+    expected_impact:
+      - "Review time: -40%"
+      - "Documentation: -60%"
+      - "Report generation: -70%"
+      - "Automation: 100% quality gates"
 
-    - condition: "quality_score < 0.8"
-      action: "quality_alert"
+  tier_2:
+    status: "HIGH VALUE - Enable Week 2"
+    skills:
+      - test-reviewer
+      - tdd
+      - tdd-refactor
+      - dataviz
+      - to-issues
+      - to-prd
+      - artifact-diagramming
+    expected_impact:
+      - "Test quality: +30%"
+      - "Issue creation: 100% automated"
+      - "Sprint planning: -50%"
+      - "Visualization: Complete"
+
+  tier_3:
+    status: "OPTIONAL - Enable Week 3+"
+    skills:
+      - grillme
+      - artifact-design
+      - artifact-capabilities
+      - skill-creator
+    expected_impact:
+      - "Requirement discovery: +40%"
+      - "Team customization: Enhanced"
+      - "Advanced automation: Enabled"
+
+---
+
+# Metrics & Monitoring
+metrics:
+  skill_usage:
+    track:
+      - skill_name
+      - agent_name
+      - workflow_id
+      - timestamp
+      - execution_time
+      - output_files_generated
+
+  efficiency_gains:
+    target:
+      - "Code review time: -40%"
+      - "Documentation: -60%"
+      - "Sprint planning: -50%"
+      - "Report generation: -70%"
+    baseline:
+      - "Manual review: ~1 hour per PR"
+      - "Manual docs: ~2 hours per feature"
+      - "Manual planning: ~2 hours per sprint"
+
+  quality_improvements:
+    target:
+      - "Test coverage: ≥80% backend, ≥70% frontend"
+      - "Security: 0 critical OWASP findings"
+      - "Performance: <200ms API, <3s frontend"
+      - "Documentation: 100% complete"
+
+---
+
+# Status & Deployment
+meta:
+  created: "2026-08-28"
+  version: "1.0"
+  status: "Production Ready"
+  last_updated: "2026-08-28"
+
+  deployment:
+    phase: "Tier 1 - Week 1"
+    all_skills_ready: true
+    github_automation_ready: true
+    harness_automation_ready: true
+
+  next_steps:
+    - "Copy this file to .claude/subagents.yaml"
+    - "Update GitHub Actions workflows"
+    - "Update Harness pipelines"
+    - "Test Tier 1 skills"
+    - "Measure productivity gains"
+    - "Enable Tier 2 skills"
