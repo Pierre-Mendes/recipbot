@@ -90,6 +90,37 @@ jobs:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
 
+  frontend:
+    name: Test (frontend)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check
+        run: npm run type-check
+
+      - name: Run tests with coverage (min 80%)
+        run: npx vitest run --coverage
+
+      - name: Build
+        run: npm run build
+
   phpstan:
     name: PHPStan (level 8)
     runs-on: ubuntu-latest
@@ -329,7 +360,7 @@ jobs:
     name: Quality Gate
     runs-on: ubuntu-latest
     if: always()
-    needs: [test, phpstan, pint, security, semgrep, trufflehog, dast]
+    needs: [test, frontend, phpstan, pint, security, semgrep, trufflehog, dast]
     permissions:
       pull-requests: write
     steps:
@@ -340,7 +371,8 @@ jobs:
             echo ""
             echo "| Check | Result |"
             echo "|---|---|"
-            echo "| Tests + coverage ≥80% | ${{ needs.test.result }} |"
+            echo "| Tests + coverage ≥80% (backend) | ${{ needs.test.result }} |"
+            echo "| Tests + coverage ≥80% (frontend) | ${{ needs.frontend.result }} |"
             echo "| PHPStan level 8 | ${{ needs.phpstan.result }} |"
             echo "| Pint style | ${{ needs.pint.result }} |"
             echo "| composer audit | ${{ needs.security.result }} (3 known laravel/framework advisories accepted, see step log) |"
@@ -355,7 +387,8 @@ jobs:
         with:
           script: |
             const results = {
-              'Tests + coverage': '${{ needs.test.result }}',
+              'Tests + coverage (backend)': '${{ needs.test.result }}',
+              'Tests + coverage (frontend)': '${{ needs.frontend.result }}',
               'PHPStan level 8': '${{ needs.phpstan.result }}',
               'Pint style': '${{ needs.pint.result }}',
               'composer audit (3 known advisories accepted)': '${{ needs.security.result }}',
