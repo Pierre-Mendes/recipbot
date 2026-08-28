@@ -69,6 +69,38 @@ class RecipeControllerTest extends TestCase
         ]);
     }
 
+    public function test_can_create_recipe_with_instructions(): void
+    {
+        $data = [
+            'title' => 'Spaghetti Carbonara',
+            'ingredients' => ['pasta', 'eggs', 'bacon', 'parmesan'],
+            'instructions' => ['Boil the pasta.', 'Mix eggs and cheese.', 'Combine everything.'],
+        ];
+
+        $response = $this->actingAs($this->user, 'api')
+            ->postJson('/api/recipes', $data);
+
+        $response->assertStatus(201);
+        $this->assertDatabaseHas('recipes', ['title' => 'Spaghetti Carbonara']);
+        $this->assertSame(
+            $data['instructions'],
+            Recipe::where('title', 'Spaghetti Carbonara')->first()->instructions
+        );
+    }
+
+    public function test_can_update_recipe_instructions(): void
+    {
+        $recipe = Recipe::factory()->for($this->user)->create(['instructions' => []]);
+
+        $response = $this->actingAs($this->user, 'api')
+            ->patchJson("/api/recipes/{$recipe->id}", [
+                'instructions' => ['Step one.', 'Step two.'],
+            ]);
+
+        $response->assertStatus(200);
+        $this->assertSame(['Step one.', 'Step two.'], $recipe->refresh()->instructions);
+    }
+
     public function test_cannot_create_recipe_without_ingredients(): void
     {
         $data = [

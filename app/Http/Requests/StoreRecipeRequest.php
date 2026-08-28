@@ -20,6 +20,8 @@ class StoreRecipeRequest extends FormRequest
             'title' => ['required', 'string', 'min:3', 'max:255'],
             'ingredients' => ['required', 'array', 'min:1', 'max:20'],
             'ingredients.*' => ['string', 'max:500'],
+            'instructions' => ['nullable', 'array', 'max:50'],
+            'instructions.*' => ['string', 'max:1000'],
             'tags' => ['nullable', 'array', 'max:10'],
             'tags.*' => ['string', 'max:50'],
             'source_url' => ['nullable', 'url', 'max:2048'],
