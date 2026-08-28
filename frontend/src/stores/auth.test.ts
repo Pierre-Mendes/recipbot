@@ -28,6 +28,10 @@ describe('auth store', () => {
     })
 
     const store = useAuthStore()
+    // Read before login too: isAuthenticated must update reactively when the
+    // token changes, not just return the right value on its first access.
+    expect(store.isAuthenticated).toBe(false)
+
     await store.login('pierre@example.com', 'password')
 
     expect(localStorage.getItem('recipbot.token')).toBe('token-123')
@@ -56,5 +60,19 @@ describe('auth store', () => {
 
     expect(localStorage.getItem('recipbot.token')).toBeNull()
     expect(store.user).toBeNull()
+    expect(store.isAuthenticated).toBe(false)
+  })
+
+  it('clearSession drops the token and flips isAuthenticated without calling the API', () => {
+    localStorage.setItem('recipbot.token', 'token-123')
+
+    const store = useAuthStore()
+    expect(store.isAuthenticated).toBe(true)
+
+    store.clearSession()
+
+    expect(localStorage.getItem('recipbot.token')).toBeNull()
+    expect(store.isAuthenticated).toBe(false)
+    expect(authApi.logout).not.toHaveBeenCalled()
   })
 })

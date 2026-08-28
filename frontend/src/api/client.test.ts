@@ -1,3 +1,4 @@
+import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { apiClient } from '@/api/client'
@@ -13,6 +14,7 @@ const interceptors = apiClient.interceptors as unknown as {
 describe('apiClient', () => {
   beforeEach(() => {
     localStorage.clear()
+    setActivePinia(createPinia())
   })
 
   it('attaches the stored bearer token to outgoing requests', async () => {

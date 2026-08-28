@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 
 import * as authApi from '@/api/auth'
 import type { User } from '@/types'
@@ -10,7 +10,13 @@ export const useAuthStore = defineStore('auth', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
 
-  const isAuthenticated = computed(() => Boolean(getToken()))
+  // A ref driven explicitly by login/logout/clearSession, not a
+  // computed(() => Boolean(getToken())): localStorage isn't a reactive Vue
+  // source, so a computed reading it directly never re-evaluates after its
+  // first access and would get permanently stuck on whatever it saw first
+  // (e.g. cached `false` from the router guard's pre-login check, silently
+  // bouncing an just-logged-in user back to /login).
+  const isAuthenticated = ref(Boolean(getToken()))
 
   async function login(email: string, password: string): Promise<void> {
     loading.value = true
@@ -18,6 +24,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await authApi.login({ email, password })
       setToken(response.access_token)
+      isAuthenticated.value = true
       await fetchCurrentUser()
     } catch (e) {
       error.value = extractErrorMessage(e, 'Invalid credentials')
@@ -54,9 +61,15 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       await authApi.logout()
     } finally {
-      removeToken()
-      user.value = null
+      clearSession()
     }
+  }
+
+  /** Drops the local session without calling the API - used by the 401 response interceptor. */
+  function clearSession(): void {
+    removeToken()
+    isAuthenticated.value = false
+    user.value = null
   }
 
   async function fetchCurrentUser(): Promise<void> {
@@ -77,5 +90,15 @@ export const useAuthStore = defineStore('auth', () => {
     return fallback
   }
 
-  return { user, loading, error, isAuthenticated, login, register, logout, fetchCurrentUser }
+  return {
+    user,
+    loading,
+    error,
+    isAuthenticated,
+    login,
+    register,
+    logout,
+    fetchCurrentUser,
+    clearSession,
+  }
 })

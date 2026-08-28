@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-import { getToken, removeToken } from '@/utils/auth'
+import { getToken } from '@/utils/auth'
 
 const baseURL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api'
 
@@ -16,9 +16,13 @@ apiClient.interceptors.request.use((config) => {
 
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (error.response?.status === 401) {
-      removeToken()
+      // Imported lazily (not at module top-level) to avoid a load-order
+      // problem with the store's own client.ts -> api/auth.ts -> client.ts
+      // import cycle.
+      const { useAuthStore } = await import('@/stores/auth')
+      useAuthStore().clearSession()
       if (window.location.pathname !== '/login') {
         window.location.assign('/login')
       }
