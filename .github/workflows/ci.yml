@@ -3,8 +3,18 @@ name: CI
 on:
   push:
     branches: [main, develop]
+  # No branch filter: this repo stacks feature branches on top of each other
+  # (e.g. feat/auth-endpoints -> feat/recipe-management -> main), and a
+  # branch filter here would silently skip CI on any PR whose base isn't
+  # main/develop - which is exactly what happened to PR #3.
   pull_request:
-    branches: [main, develop]
+
+# Cancel superseded runs on the same ref - this repo stacks feature branches,
+# so without this a new push re-triggers the full suite (DAST/ZAP, Docker
+# build, Semgrep) at every stacking level while the previous run is still going.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   PHP_VERSION: "8.2"
@@ -58,10 +68,7 @@ jobs:
         run: composer install --no-ansi --no-interaction --no-progress
 
       - name: Setup environment
-        run: |
-          cp .env.example .env
-          php artisan key:generate --ansi
-          php artisan jwt:secret --force
+        uses: ./.github/actions/setup-env
 
       - name: Run migrations
         run: php artisan migrate --force --no-interaction
@@ -107,6 +114,14 @@ jobs:
 
       - name: Install Composer dependencies
         run: composer install --no-ansi --no-interaction --no-progress
+
+      # Larastan boots the actual Laravel app to resolve facades (e.g. the
+      # JWTAuth facade's real methods) against their container bindings. Without
+      # an APP_KEY/JWT_SECRET that boot fails silently and every facade method
+      # looks undefined - this bit us on the auth endpoints (JWTAuth::attempt()/
+      # ::factory() flagged as undefined) because this job never set up .env.
+      - name: Setup environment
+        uses: ./.github/actions/setup-env
 
       - name: Run PHPStan
         run: composer run phpstan
@@ -193,12 +208,31 @@ jobs:
         with:
           fetch-depth: 0
 
+      # base/head must differ or TruffleHog refuses to scan ("BASE and HEAD
+      # commits are the same"). A hardcoded base of the default branch broke
+      # this on every direct push to that branch (base == head trivially).
+      # Use the PR's base SHA on pull_request events, and the pre-push SHA on
+      # push events - falling back to a full-history scan (empty base) when
+      # `before` isn't usable: a brand new branch's first push (all-zero SHA)
+      # or a force-push, where `before` need not be an ancestor of `after` and
+      # would otherwise hand TruffleHog an invalid or misleading range.
+      - name: Determine TruffleHog scan range
+        id: scan_range
+        if: github.event_name != 'pull_request'
+        run: |
+          before="${{ github.event.before }}"
+          if [ -z "$before" ] || [ "$before" = "0000000000000000000000000000000000000000" ] || ! git merge-base --is-ancestor "$before" "${{ github.sha }}" 2>/dev/null; then
+            echo "base=" >> "$GITHUB_OUTPUT"
+          else
+            echo "base=$before" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: TruffleHog secret scan
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
+          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || steps.scan_range.outputs.base }}
+          head: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.event.after }}
           extra_args: --only-verified
 
   dast:
@@ -242,11 +276,11 @@ jobs:
       - name: Install Composer dependencies
         run: composer install --no-ansi --no-interaction --no-progress
 
-      - name: Setup environment and boot app
+      - name: Setup environment
+        uses: ./.github/actions/setup-env
+
+      - name: Boot app
         run: |
-          cp .env.example .env
-          php artisan key:generate --ansi
-          php artisan jwt:secret --force
           php artisan migrate --force --no-interaction
           php artisan serve --host=0.0.0.0 --port=8000 &
           sleep 3

@@ -1,0 +1,11 @@
+name: Setup environment
+description: Copy .env.example and generate APP_KEY/JWT_SECRET so facades that boot the app (e.g. JWTAuth) resolve correctly.
+runs:
+  using: composite
+  steps:
+    - name: Setup environment
+      shell: bash
+      run: |
+        cp .env.example .env
+        php artisan key:generate --ansi
+        php artisan jwt:secret --force
