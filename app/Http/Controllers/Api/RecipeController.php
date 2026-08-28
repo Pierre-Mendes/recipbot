@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\RecipeScrapingException;
+use App\Http\Requests\FromUrlRequest;
 use App\Http\Requests\StoreRecipeRequest;
 use App\Http\Requests\UpdateRecipeRequest;
 use App\Models\Recipe;
 use App\Models\User;
+use App\Services\RecipeScraperService;
 use App\Services\RecipeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -47,6 +50,34 @@ class RecipeController
         $user = $request->user();
 
         $recipe = $this->recipes->create($user, $request->validated());
+
+        return response()->json([
+            'data' => $recipe,
+            'message' => 'Recipe created successfully',
+        ], 201);
+    }
+
+    /**
+     * Create a new recipe by scraping it from a whitelisted URL.
+     */
+    public function fromUrl(FromUrlRequest $request, RecipeScraperService $scraper): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        try {
+            $extracted = $scraper->extract($request->validated('url'));
+        } catch (RecipeScrapingException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        $recipe = $this->recipes->create($user, [
+            'title' => $extracted['title'],
+            'ingredients' => $extracted['ingredients'],
+            'instructions' => $extracted['instructions'],
+            'tags' => $request->validated('tags') ?? [],
+            'source_url' => $request->validated('url'),
+        ]);
 
         return response()->json([
             'data' => $recipe,

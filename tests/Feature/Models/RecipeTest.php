@@ -31,6 +31,15 @@ test('creates a recipe with valid data', function () {
         ->and($recipe->id)->toBeString();
 });
 
+test('instructions defaults to an empty array when not provided', function () {
+    $recipe = Recipe::factory()->create();
+
+    // The DB applies its column default on INSERT; the in-memory model
+    // isn't refreshed with it automatically, so re-fetch to check what's
+    // actually persisted.
+    expect($recipe->fresh()->instructions)->toBe([]);
+});
+
 test('validation passes with valid data', function () {
     expect(validateRecipe()->passes())->toBeTrue();
 });

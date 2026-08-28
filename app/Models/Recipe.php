@@ -29,6 +29,7 @@ class Recipe extends Model
     protected $fillable = [
         'title',
         'ingredients',
+        'instructions',
         'tags',
         'source_url',
     ];
@@ -42,6 +43,7 @@ class Recipe extends Model
     {
         return [
             'ingredients' => 'array',
+            'instructions' => 'array',
             'tags' => 'array',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
@@ -70,6 +72,8 @@ class Recipe extends Model
             ],
             'ingredients' => ['required', 'array', 'min:1', 'max:20'],
             'ingredients.*' => ['string', 'max:255'],
+            'instructions' => ['nullable', 'array', 'max:50'],
+            'instructions.*' => ['string', 'max:1000'],
             'tags' => ['array', 'max:10'],
             'tags.*' => ['string', 'max:50', 'regex:/^[a-zA-Z0-9 -]+$/'],
             'source_url' => ['nullable', 'url', 'max:2048'],
