@@ -110,4 +110,28 @@ class SsrfGuardTest extends TestCase
 
         $this->addToAssertionCount(1);
     }
+
+    public function test_allows_www_subdomain_of_a_whitelisted_domain(): void
+    {
+        $guard = new SsrfGuard(new FakeHostResolver([
+            'www.tudogostoso.com.br' => ['203.0.113.10'],
+        ]));
+
+        $guard->assertSafe('https://www.tudogostoso.com.br/receita/1');
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function test_assert_safe_returns_the_resolved_safe_ips(): void
+    {
+        // RecipeScraperService pins its actual HTTP connection to these IPs,
+        // so a caller must be able to rely on assertSafe returning them.
+        $guard = new SsrfGuard(new FakeHostResolver([
+            'tudogostoso.com.br' => ['203.0.113.10', '203.0.113.11'],
+        ]));
+
+        $ips = $guard->assertSafe('https://tudogostoso.com.br/receita/1');
+
+        $this->assertSame(['203.0.113.10', '203.0.113.11'], $ips);
+    }
 }

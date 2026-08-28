@@ -210,15 +210,20 @@ jobs:
       # base/head must differ or TruffleHog refuses to scan ("BASE and HEAD
       # commits are the same"). A hardcoded base of the default branch broke
       # this on every direct push to that branch (base == head trivially).
-      # Use the PR's base SHA on pull_request events, and the pre-push SHA on
-      # push events (falling back to a full-history scan on a brand new
-      # branch's first push, when `before` is the all-zero SHA).
+      # On pull_request events, scan the PR's full base->head diff. On push
+      # events (main/develop only, so low-frequency), always do a
+      # full-history scan (empty base) instead of just this push's
+      # before->after delta: a delta-only window only ever gets scanned
+      # once, so a secret a scan run misses there (flaky runner, or
+      # --only-verified not yet flagging it) is never re-caught by a later
+      # push - and it also sidesteps `before` not being a valid ancestor of
+      # `after` on a force-push or a brand new branch's first push.
       - name: TruffleHog secret scan
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
-          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || (github.event.before != '0000000000000000000000000000000000000000' && github.event.before || '') }}
-          head: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.event.after }}
+          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
+          head: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           extra_args: --only-verified
 
   dast:

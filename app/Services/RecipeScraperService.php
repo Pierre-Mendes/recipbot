@@ -3,14 +3,24 @@
 namespace App\Services;
 
 use App\Exceptions\RecipeScrapingException;
+use GuzzleHttp\Exception\RequestException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 
 class RecipeScraperService
 {
-    private const TIMEOUT_SECONDS = 10;
+    // Mirrors App\Models\Recipe::rules()'s declared bounds - scraped content
+    // is stored via RecipeService::create() without going through a
+    // FormRequest, so nothing else enforces these limits before it's saved.
+    private const MAX_TITLE_LENGTH = 255;
 
-    private const MAX_RESPONSE_BYTES = 5 * 1024 * 1024;
+    private const MAX_INGREDIENTS = 20;
+
+    private const MAX_INGREDIENT_LENGTH = 255;
+
+    private const MAX_INSTRUCTIONS = 50;
+
+    private const MAX_INSTRUCTION_LENGTH = 1000;
 
     public function __construct(
         private readonly SsrfGuard $ssrfGuard,
@@ -23,14 +33,43 @@ class RecipeScraperService
      */
     public function extract(string $url): array
     {
-        $this->ssrfGuard->assertSafe($url);
+        $maxBytes = (int) config('scraper.max_response_bytes');
+
+        // assertSafe resolves and validates the host's IP; pin the actual
+        // connection to that same IP (CURLOPT_RESOLVE) instead of letting
+        // Guzzle/cURL re-resolve the hostname independently, otherwise DNS
+        // changing between the check and this request bypasses the guard.
+        $ips = $this->ssrfGuard->assertSafe($url);
+        $parts = parse_url($url);
+        if ($parts === false || ! isset($parts['host'], $parts['scheme'])) {
+            // Unreachable in practice - assertSafe() above already parsed
+            // and validated this same URL - but keeps this method's own
+            // typing sound independent of that.
+            throw new RecipeScrapingException('Invalid URL.');
+        }
+        $host = strtolower($parts['host']);
+        $port = $parts['port'] ?? (strtolower($parts['scheme']) === 'https' ? 443 : 80);
 
         try {
-            $response = Http::timeout(self::TIMEOUT_SECONDS)
-                ->withOptions(['allow_redirects' => false])
+            $response = Http::timeout((int) config('scraper.timeout'))
+                ->withOptions([
+                    'allow_redirects' => false,
+                    'curl' => [
+                        CURLOPT_RESOLVE => ["{$host}:{$port}:{$ips[0]}"],
+                        // Content-Length can be absent (chunked encoding) or
+                        // simply lied about, so enforce the size cap against
+                        // bytes actually received, not just the header.
+                        CURLOPT_NOPROGRESS => false,
+                        CURLOPT_XFERINFOFUNCTION => function ($resource, $downloadSize, $downloaded) use ($maxBytes) {
+                            return $downloaded > $maxBytes ? 1 : 0;
+                        },
+                    ],
+                ])
                 ->get($url);
         } catch (ConnectionException) {
             throw new RecipeScrapingException('URL extraction timeout.');
+        } catch (RequestException) {
+            throw new RecipeScrapingException('Response too large.');
         }
 
         if ($response->redirect()) {
@@ -42,22 +81,47 @@ class RecipeScraperService
         }
 
         $contentLength = $response->header('Content-Length');
-        if ($contentLength !== '' && (int) $contentLength > self::MAX_RESPONSE_BYTES) {
+        if ($contentLength !== '' && (int) $contentLength > $maxBytes) {
             throw new RecipeScrapingException('Response too large.');
         }
 
         $body = $response->body();
-        if (strlen($body) > self::MAX_RESPONSE_BYTES) {
+        if (strlen($body) > $maxBytes) {
             throw new RecipeScrapingException('Response too large.');
         }
 
-        $extracted = $this->parse($body);
+        $extracted = $this->capExtraction($this->parse($body));
 
         if ($extracted['title'] === '' || $extracted['ingredients'] === []) {
             throw new RecipeScrapingException('Could not extract a recipe from this page.');
         }
 
         return $extracted;
+    }
+
+    /**
+     * @param  array{title: string, ingredients: list<string>, instructions: list<string>}  $extracted
+     * @return array{title: string, ingredients: list<string>, instructions: list<string>}
+     */
+    private function capExtraction(array $extracted): array
+    {
+        return [
+            'title' => mb_substr($extracted['title'], 0, self::MAX_TITLE_LENGTH),
+            'ingredients' => $this->capList($extracted['ingredients'], self::MAX_INGREDIENTS, self::MAX_INGREDIENT_LENGTH),
+            'instructions' => $this->capList($extracted['instructions'], self::MAX_INSTRUCTIONS, self::MAX_INSTRUCTION_LENGTH),
+        ];
+    }
+
+    /**
+     * @param  list<string>  $items
+     * @return list<string>
+     */
+    private function capList(array $items, int $maxCount, int $maxLength): array
+    {
+        return array_map(
+            fn (string $item) => mb_substr($item, 0, $maxLength),
+            array_slice($items, 0, $maxCount)
+        );
     }
 
     /**

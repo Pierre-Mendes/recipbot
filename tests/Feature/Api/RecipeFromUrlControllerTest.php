@@ -101,4 +101,20 @@ class RecipeFromUrlControllerTest extends TestCase
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['url']);
     }
+
+    public function test_rejects_tag_with_disallowed_characters(): void
+    {
+        Http::fake();
+
+        $response = $this->actingAs($this->user, 'api')
+            ->postJson('/api/recipes/from-url', [
+                'url' => self::URL,
+                'tags' => ['sobremesa!'],
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['tags.0']);
+
+        Http::assertNothingSent();
+    }
 }

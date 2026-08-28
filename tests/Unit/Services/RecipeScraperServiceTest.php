@@ -105,6 +105,32 @@ class RecipeScraperServiceTest extends TestCase
         $this->service()->extract(self::URL);
     }
 
+    public function test_caps_extracted_content_to_the_models_declared_bounds(): void
+    {
+        $ingredients = array_map(fn (int $i) => "ingredient {$i}", range(1, 30));
+        $instructions = array_map(fn (int $i) => str_repeat('x', 1200), range(1, 60));
+        $longTitle = str_repeat('a', 300);
+
+        $html = '<script type="application/ld+json">'.json_encode([
+            '@context' => 'https://schema.org',
+            '@type' => 'Recipe',
+            'name' => $longTitle,
+            'recipeIngredient' => $ingredients,
+            'recipeInstructions' => array_map(fn (string $s) => ['@type' => 'HowToStep', 'text' => $s], $instructions),
+        ]).'</script>';
+
+        Http::fake([
+            self::URL => Http::response($html, 200, ['Content-Type' => 'text/html']),
+        ]);
+
+        $result = $this->service()->extract(self::URL);
+
+        $this->assertSame(255, mb_strlen($result['title']));
+        $this->assertCount(20, $result['ingredients']);
+        $this->assertCount(50, $result['instructions']);
+        $this->assertSame(1000, mb_strlen($result['instructions'][0]));
+    }
+
     public function test_rejects_non_whitelisted_domain_before_any_http_call(): void
     {
         Http::fake();

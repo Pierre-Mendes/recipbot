@@ -9,30 +9,33 @@ use App\Exceptions\RecipeScrapingException;
  * SSRF protection for the recipe scraper: only http/https URLs on a small
  * domain whitelist are allowed, and the resolved IP (not just the hostname
  * string) is checked against private/reserved ranges to prevent DNS
- * rebinding from bypassing the whitelist.
+ * rebinding from bypassing the whitelist. Callers must pin the actual
+ * connection to one of the IPs returned by assertSafe() - re-resolving the
+ * hostname independently at fetch time would let DNS change between the
+ * check and the request and bypass this guard.
  */
 class SsrfGuard
 {
     /**
      * @var list<string>
      */
-    private const ALLOWED_HOSTS = [
-        'tudogostoso.com.br',
-        'www.tudogostoso.com.br',
-        'cybercook.com.br',
-        'www.cybercook.com.br',
-        'receitas.globo.com',
-        'www.receitas.globo.com',
-    ];
+    private readonly array $allowedHosts;
 
     public function __construct(
         private readonly HostResolver $resolver,
-    ) {}
+    ) {
+        $this->allowedHosts = config('scraper.allowed_hosts', []);
+    }
 
     /**
      * Throws RecipeScrapingException if the URL is not safe to fetch.
+     * Returns the resolved, validated IPs so the caller can pin the actual
+     * HTTP connection to one of them - re-resolving the hostname at fetch
+     * time would let DNS rebinding bypass this check entirely.
+     *
+     * @return list<string>
      */
-    public function assertSafe(string $url): void
+    public function assertSafe(string $url): array
     {
         $parts = parse_url($url);
 
@@ -50,7 +53,8 @@ class SsrfGuard
         }
 
         $host = strtolower($parts['host']);
-        if (! in_array($host, self::ALLOWED_HOSTS, true)) {
+        $bareHost = preg_replace('/^www\./', '', $host);
+        if (! in_array($bareHost, $this->allowedHosts, true)) {
             throw new RecipeScrapingException('Domain not whitelisted.');
         }
 
@@ -64,6 +68,8 @@ class SsrfGuard
                 throw new RecipeScrapingException('Private IP blocked.');
             }
         }
+
+        return $ips;
     }
 
     /**
