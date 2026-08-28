@@ -1,8 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
-import type { FullConfig } from '@playwright/test'
-
 import { AUTH_FILE, API_URL } from './constants'
 import { newTestUser } from './fixtures'
 
@@ -13,7 +11,7 @@ import { newTestUser } from './fixtures'
  * here, directly against the API, and every spec except auth.spec.ts reuses
  * the resulting storage state instead of submitting the login form again.
  */
-export default async function globalSetup(_config: FullConfig): Promise<void> {
+export default async function globalSetup(): Promise<void> {
   const user = newTestUser()
 
   const registerRes = await fetch(`${API_URL}/auth/register`, {
