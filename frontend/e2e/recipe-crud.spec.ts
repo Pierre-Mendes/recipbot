@@ -16,7 +16,7 @@ test.describe('recipe CRUD (manual entry)', () => {
     const title = `E2E Pancakes ${Date.now()}`
 
     // Create
-    await page.getByRole('link', { name: 'Add Recipe' }).click();
+    await page.getByRole('link', { name: 'Add Recipe' }).click()
     await expect(page.getByRole('heading', { name: 'Add Recipe' })).toBeVisible()
 
     await page.getByLabel('Title').fill(title)
