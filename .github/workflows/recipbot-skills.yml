@@ -1,379 +1,76 @@
 name: RecipBot Skills Integration Pipeline
 
+# Advisory automated review — it never gates the required CI checks.
+#
+# The previous version of this workflow shelled out to a `claude-code "..."`
+# CLI that does not exist on GitHub-hosted runners, so every job failed on
+# every run and an `if: always()` step still posted a comment claiming PDF/
+# XLSX artifacts that were never produced. This rewrite replaces that with the
+# official Claude Code GitHub Action, which actually runs on the runner. It is
+# opt-in (only runs when an ANTHROPIC_API_KEY secret is configured) and fully
+# advisory (continue-on-error), so it can never block the real Quality Gate
+# defined in ci.yml.
+
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    paths:
-      - 'app/**'
-      - 'resources/**'
-      - 'tests/**'
-      - 'database/migrations/**'
-      - 'routes/**'
-  push:
-    branches: [main, develop]
-    paths:
-      - 'app/**'
-      - 'resources/**'
-      - 'tests/**'
 
-env:
-  COMPOSER_MEMORY_LIMIT: -1
+# Least privilege: only what an advisory PR review needs.
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+# One review per PR head; cancel superseded runs (feature branches stack here).
+concurrency:
+  group: skills-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  # Tier 1 Skills: Quality Gate with Automated Exports
-  quality-gate-tier-1:
-    name: "Quality Gate - Tier 1 Skills"
+  claude-review:
+    name: Claude Code Review (advisory)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    if: github.event_name == 'pull_request'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.5'
-          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, bcmath, intl, gd, exif, iconv
-          coverage: none
-
-      - name: Install dependencies
-        run: composer install -q --no-ansi --no-interaction --no-scripts --prefer-dist
-
-      - name: Cache Node modules
-        uses: actions/cache@v3
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Install frontend dependencies
-        run: npm ci
-
-      - name: Run ReviewAgent - Quality Gate with Tier 1 Skills
-        run: |
-          cat > /tmp/quality_gate.sh << 'EOF'
-          #!/bin/bash
-          set -e
-
-          echo "🔍 Starting ReviewAgent - Quality Gate with Tier 1 Skills"
-          echo "=================================================="
-
-          claude-code "review: execute quality gate with tier 1 skill exports
-
-          CRITICAL TIER 1 SKILLS:
-          ✅ recipbot-code-reviewer: OWASP Top 10 + Laravel patterns validation
-          ✅ test-reviewer: Test coverage and quality validation
-          ✅ dataviz: Performance baseline chart generation
-          ✅ xlsx: Export metrics spreadsheet
-          ✅ pdf: Generate formal audit report
-
-          EXECUTION STEPS:
-          1. Run recipbot-code-reviewer for security and quality
-          2. Run test-reviewer for test coverage (target ≥80%)
-          3. Create performance comparison with dataviz
-          4. Export all metrics to XLSX
-          5. Generate comprehensive PDF report
-
-          DELIVERABLES:
-          - PDF audit report (audit-report-${{ github.run_id }}.pdf)
-          - XLSX metrics spreadsheet (metrics-${{ github.run_id }}.xlsx)
-          - PNG performance chart (performance-chart-${{ github.run_id }}.png)
-          - Summary for GitHub PR comment
-
-          OUTPUT DIRECTORY: artifacts/"
-
-          bash /tmp/quality_gate.sh
-
-      - name: Upload Review Artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: tier1-review-artifacts
-          path: |
-            artifacts/*.pdf
-            artifacts/*.xlsx
-            artifacts/*.png
-          retention-days: 30
-
-      - name: Generate PR Comment
-        if: github.event_name == 'pull_request' && always()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-
-            let comment = '## 🔍 Quality Gate Review (Tier 1 Skills)\n\n';
-            comment += '### ✅ Executed Validations\n';
-            comment += '- [x] **recipbot-code-reviewer**: OWASP + Laravel patterns\n';
-            comment += '- [x] **test-reviewer**: Coverage & quality\n';
-            comment += '- [x] **dataviz**: Performance analysis\n';
-            comment += '- [x] **xlsx**: Metrics export\n';
-            comment += '- [x] **pdf**: Formal report\n\n';
-
-            comment += '### 📊 Artifacts Generated\n';
-            comment += '- PDF Audit Report: [Download](artifacts/audit-report-${{ github.run_id }}.pdf)\n';
-            comment += '- Metrics Spreadsheet: [Download](artifacts/metrics-${{ github.run_id }}.xlsx)\n';
-            comment += '- Performance Chart: [Download](artifacts/performance-chart-${{ github.run_id }}.png)\n\n';
-
-            comment += '### 🎯 Next Steps\n';
-            comment += 'Review the artifacts above and address any critical findings.\n';
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
-
-  # Tier 2 Skills: Advanced Quality Analysis
-  quality-gate-tier-2:
-    name: "Quality Gate - Tier 2 Skills"
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    needs: quality-gate-tier-1
-    if: github.event_name == 'pull_request'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.5'
-
-      - name: Install dependencies
-        run: composer install -q --no-ansi --no-interaction --no-scripts --prefer-dist
-
-      - name: Run ReviewAgent - Tier 2 Advanced Skills
-        run: |
-          echo "🚀 Running ReviewAgent - Tier 2 Advanced Skills"
-
-          claude-code "review: execute advanced quality checks with tier 2 skills
-
-          TIER 2 SKILLS (HIGH VALUE):
-          ✅ test-reviewer: Advanced test quality and edge cases
-          ✅ dataviz: Detailed performance breakdown chart
-          ✅ to-issues: Auto-create GitHub issues for critical findings
-
-          EXECUTION:
-          1. Deep dive test coverage analysis
-          2. Performance bottleneck visualization
-          3. Auto-create issues for critical findings
-
-          AUTO-CREATE ISSUES FOR:
-          - Critical security findings (P0)
-          - Performance violations (P1)
-          - Coverage below 80% (P1)"
-
-      - name: Upload Tier 2 Artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: tier2-review-artifacts
-          path: |
-            artifacts/*.png
-            artifacts/*.svg
-          retention-days: 30
-
-  # Tier 3 Skills: Optional Advanced Analysis
-  quality-gate-tier-3:
-    name: "Quality Gate - Tier 3 Skills (Optional)"
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    needs: quality-gate-tier-2
-    if: github.event_name == 'pull_request'
+    # A review that flags issues — or a missing API key — must never turn this
+    # check red and block the PR. The required gates live in ci.yml.
     continue-on-error: true
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Checkout
+        # Pinned to a commit SHA (not a mutable @v4 tag) to close the
+        # supply-chain risk Semgrep's mutable-action-tag rule flags.
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 1
 
-      - name: Run ReviewAgent - Tier 3 Skills
+      # Secrets cannot be referenced in a job/step `if:`, so gate on a step
+      # output derived from the secret instead.
+      - name: Check for Anthropic credentials
+        id: cfg
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          echo "🔮 Running ReviewAgent - Tier 3 Optional Skills"
+          if [ -n "$ANTHROPIC_API_KEY" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Claude review skipped::Set the ANTHROPIC_API_KEY repository secret to enable automated Claude Code reviews."
+          fi
 
-          claude-code "review: execute tier 3 optional analysis
+      - name: Claude Code review
+        if: steps.cfg.outputs.enabled == 'true'
+        # Pinned to a commit SHA rather than the mutable @v1 tag.
+        uses: anthropics/claude-code-action@923714f19352008835430ae7d21fa14865c3d476 # v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: |
+            Review this pull request for RecipBot (Laravel 11 API + Vue 3 frontend).
 
-          TIER 3 SKILLS (OPTIONAL):
-          ⚙️ artifact-capabilities: Interactive performance dashboard
+            Focus on:
+            - Security: OWASP Top 10, SSRF in the scraper, XSS and token handling
+              in the Vue frontend, authorization scoping on API endpoints.
+            - Backend patterns: service layer, FormRequest validation, Pest
+              coverage (>= 80%), PHPStan level 8.
+            - Frontend: type safety, store/composable correctness, test coverage.
 
-          These skills provide advanced capabilities if enabled."
-
-  # Sprint Metrics - Tier 1, 2, 3
-  sprint-metrics:
-    name: "Sprint Metrics & Reports"
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Generate Sprint Metrics - Tier 1
-        run: |
-          echo "📊 Generating Sprint Metrics with Tier 1 Skills"
-
-          claude-code "analysis: generate sprint metrics with tier 1 skills
-
-          TIER 1 SKILLS:
-          ✅ xlsx: Export sprint metrics and burndown
-          ✅ pptx: Create stakeholder presentation
-          ✅ pdf: Generate metrics report
-
-          EXPORTS:
-          - Sprint velocity (XLSX)
-          - Burndown chart (XLSX + PNG)
-          - Metrics report (PDF)
-          - Stakeholder deck (PPTX)"
-
-      - name: Generate Sprint Metrics - Tier 2
-        run: |
-          echo "📈 Generating Advanced Metrics with Tier 2 Skills"
-
-          claude-code "analysis: generate advanced metrics with tier 2 skills
-
-          TIER 2 SKILLS:
-          ✅ dataviz: Create performance and quality charts
-          ✅ artifact-diagramming: Architecture update diagram
-
-          EXPORTS:
-          - Performance trend chart (PNG/SVG)
-          - Coverage trend chart (PNG/SVG)
-          - Architecture diagram (SVG)"
-
-      - name: Archive Reports
-        run: |
-          mkdir -p .github/reports/$(date +%Y-%m-%d)
-
-          # Move generated artifacts
-          mv artifacts/*.xlsx .github/reports/$(date +%Y-%m-%d)/ 2>/dev/null || true
-          mv artifacts/*.pdf .github/reports/$(date +%Y-%m-%d)/ 2>/dev/null || true
-          mv artifacts/*.png .github/reports/$(date +%Y-%m-%d)/ 2>/dev/null || true
-          mv artifacts/*.svg .github/reports/$(date +%Y-%m-%d)/ 2>/dev/null || true
-
-          # Create index
-          cat > .github/reports/$(date +%Y-%m-%d)/README.md << 'REPORT'
-          # Sprint Metrics Report
-
-          Generated: $(date)
-
-          ## Files
-          - Sprint metrics (XLSX)
-          - Metrics report (PDF)
-          - Stakeholder presentation (PPTX)
-          - Performance charts (PNG/SVG)
-          - Architecture diagram (SVG)
-          REPORT
-
-      - name: Commit Reports to Git
-        run: |
-          git config --local user.email "bot@recipbot.local"
-          git config --local user.name "RecipBot Skills Bot"
-          git add .github/reports/
-          git diff --quiet && git diff --staged --quiet || git commit -m "chore: update sprint metrics and reports [skip ci]"
-          git push origin ${{ github.ref }} || echo "Nothing to push"
-
-  # Documentation Export - All Tiers
-  documentation-export:
-    name: "Documentation Export"
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Generate Documentation - Tier 1
-        run: |
-          echo "📝 Generating Documentation with Tier 1 Skills"
-
-          claude-code "analysis: export documentation with tier 1 skills
-
-          TIER 1 SKILLS:
-          ✅ docx: Export requirements and specifications
-          ✅ pdf: Generate formal documentation
-
-          EXPORTS:
-          - Requirements document (DOCX)
-          - Specifications (PDF)
-          - API documentation (DOCX)"
-
-      - name: Generate Documentation - Tier 2
-        run: |
-          echo "📚 Generating Advanced Documentation with Tier 2 Skills"
-
-          claude-code "analysis: export advanced docs with tier 2 skills
-
-          TIER 2 SKILLS:
-          ✅ to-prd: Generate formal Product Requirements Document
-          ✅ artifact-diagramming: Create architecture documentation
-
-          EXPORTS:
-          - Formal PRD (DOCX)
-          - Architecture diagrams (SVG)
-          - System design documentation (DOCX)"
-
-      - name: Archive Documentation
-        run: |
-          mkdir -p .github/docs/$(date +%Y-%m-%d)
-          mv artifacts/*.docx .github/docs/$(date +%Y-%m-%d)/ 2>/dev/null || true
-          mv artifacts/*.pdf .github/docs/$(date +%Y-%m-%d)/ 2>/dev/null || true
-          mv artifacts/*.svg .github/docs/$(date +%Y-%m-%d)/ 2>/dev/null || true
-
-      - name: Commit Documentation
-        run: |
-          git config --local user.email "bot@recipbot.local"
-          git config --local user.name "RecipBot Skills Bot"
-          git add .github/docs/
-          git diff --quiet && git diff --staged --quiet || git commit -m "docs: update documentation exports [skip ci]"
-          git push origin ${{ github.ref }} || echo "Nothing to push"
-
-  # Summary Report
-  summary:
-    name: "Pipeline Summary"
-    runs-on: ubuntu-latest
-    needs: [quality-gate-tier-1, quality-gate-tier-2, sprint-metrics, documentation-export]
-    if: always()
-
-    steps:
-      - name: Print Summary
-        run: |
-          echo "✅ RecipBot Skills Integration Pipeline Complete"
-          echo ""
-          echo "🎯 Tier 1 Skills: Quality Gate with Exports"
-          echo "   ✅ recipbot-code-reviewer"
-          echo "   ✅ test-reviewer"
-          echo "   ✅ dataviz"
-          echo "   ✅ pdf"
-          echo "   ✅ xlsx"
-          echo ""
-          echo "🚀 Tier 2 Skills: Advanced Analysis"
-          echo "   ✅ test-reviewer (advanced)"
-          echo "   ✅ dataviz (advanced)"
-          echo "   ✅ to-issues (auto-create)"
-          echo ""
-          echo "📊 Metrics: Generated"
-          echo "   ✅ Sprint metrics"
-          echo "   ✅ Performance charts"
-          echo "   ✅ Burndown visualization"
-          echo ""
-          echo "📝 Documentation: Exported"
-          echo "   ✅ Requirements"
-          echo "   ✅ Specifications"
-          echo "   ✅ Architecture diagrams"
-          echo "   ✅ PRD"
-          echo ""
-          echo "🔗 Artifacts:"
-          echo "   📊 Reports: .github/reports/"
-          echo "   📚 Docs: .github/docs/"
-          echo "   🎯 All skill outputs in action artifacts"
+            Leave concise, actionable inline comments. This is an advisory review
+            only — do not approve or merge.
