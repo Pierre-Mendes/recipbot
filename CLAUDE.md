@@ -287,7 +287,7 @@ DB_HOST=recipbot-staging.c123.us-east-1.rds.amazonaws.com
 ## 📊 Tech Stack Detalhes
 
 ### Backend
-- **Runtime**: PHP 8.2 (Alpine Linux)
+- **Runtime**: PHP 8.4 (Alpine Linux)
 - **Framework**: Laravel 11
 - **Database**: PostgreSQL 16 (pgvector extension)
 - **Cache**: Redis 7
