@@ -39,6 +39,7 @@ function handleSubmit() {
         v-for="tag in props.availableTags"
         :key="tag.name"
         type="button"
+        :aria-pressed="selectedTags.includes(tag.name)"
         class="rounded-full px-2 py-0.5 text-xs"
         :class="
           selectedTags.includes(tag.name)

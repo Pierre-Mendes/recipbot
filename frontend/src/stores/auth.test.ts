@@ -51,6 +51,24 @@ describe('auth store', () => {
     expect(localStorage.getItem('recipbot.token')).toBeNull()
   })
 
+  it('clears the partial session when loading the current user fails after login', async () => {
+    vi.mocked(authApi.login).mockResolvedValue({
+      access_token: 'token-123',
+      token_type: 'Bearer',
+      expires_in: 3600,
+    })
+    vi.mocked(authApi.me).mockRejectedValue(new Error('me failed'))
+
+    const store = useAuthStore()
+    await expect(store.login('pierre@example.com', 'password')).rejects.toBeDefined()
+
+    // The token was stored mid-login; it must be dropped so guards/navbar don't
+    // treat the user as authenticated after a failed login.
+    expect(localStorage.getItem('recipbot.token')).toBeNull()
+    expect(store.isAuthenticated).toBe(false)
+    expect(store.user).toBeNull()
+  })
+
   it('clears the token and user on logout', async () => {
     localStorage.setItem('recipbot.token', 'token-123')
     vi.mocked(authApi.logout).mockResolvedValue(undefined)

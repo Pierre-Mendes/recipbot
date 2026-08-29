@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import * as recipesApi from '@/api/recipes'
-import type { Recipe } from '@/types'
+import type { PaginatedRecipes, Recipe } from '@/types'
 import { useRecipesStore } from '@/stores/recipes'
 
 vi.mock('@/api/recipes')
@@ -105,6 +105,34 @@ describe('recipes store', () => {
     expect(store.loading).toBe(false)
   })
 
+  it('drops a stale search response when a newer search has already resolved', async () => {
+    let resolveStale!: (value: PaginatedRecipes) => void
+    const stale = new Promise<PaginatedRecipes>((resolve) => {
+      resolveStale = resolve
+    })
+    const fresh: PaginatedRecipes = {
+      data: [sampleRecipe],
+      meta: { current_page: 1, total: 1, per_page: 20, last_page: 1 },
+    }
+    vi.mocked(recipesApi.searchRecipes).mockReturnValueOnce(stale).mockResolvedValueOnce(fresh)
+
+    const store = useRecipesStore()
+    const stalePromise = store.search('old', [])
+    const freshPromise = store.search('new', [])
+    await freshPromise
+
+    // Resolve the older, superseded request last - its result must be ignored.
+    resolveStale({
+      data: [],
+      meta: { current_page: 9, total: 0, per_page: 20, last_page: 9 },
+    })
+    await stalePromise
+
+    expect(store.recipes).toEqual([sampleRecipe])
+    expect(store.meta?.current_page).toBe(1)
+    expect(store.loading).toBe(false)
+  })
+
   it('loads tag suggestions', async () => {
     vi.mocked(recipesApi.listTags).mockResolvedValue([
       { name: 'sobremesa', count: 3 },
@@ -156,7 +184,9 @@ describe('recipes store', () => {
     const store = useRecipesStore()
     const result = await store.update(sampleRecipe.id, { title: 'Bolo atualizado' })
 
-    expect(recipesApi.updateRecipe).toHaveBeenCalledWith(sampleRecipe.id, { title: 'Bolo atualizado' })
+    expect(recipesApi.updateRecipe).toHaveBeenCalledWith(sampleRecipe.id, {
+      title: 'Bolo atualizado',
+    })
     expect(result.title).toBe('Bolo atualizado')
   })
 })
