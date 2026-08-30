@@ -114,6 +114,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Prettier is a declared frontend quality gate; run it before generated
+      # output (coverage/, dist/) exists so it only checks source.
+      - name: Format check
+        run: npm run format:check
+
       - name: Type-check
         run: npm run type-check
 
@@ -521,3 +526,31 @@ jobs:
               repo: context.repo.repo,
               body: `${header}\n\n${lines.join('\n')}`,
             });
+
+      # The summary/comment steps above only report; without this the Quality
+      # Gate check goes green even when a required job failed. Fail explicitly on
+      # any required need that isn't success. security/semgrep/dast stay advisory
+      # (their scan steps are continue-on-error / accepted-risk by design).
+      - name: Enforce required checks
+        if: always()
+        env:
+          TEST: ${{ needs.test.result }}
+          FRONTEND: ${{ needs.frontend.result }}
+          E2E: ${{ needs.e2e.result }}
+          PHPSTAN: ${{ needs.phpstan.result }}
+          PINT: ${{ needs.pint.result }}
+          TRUFFLEHOG: ${{ needs.trufflehog.result }}
+        run: |
+          failed=0
+          for name in TEST FRONTEND E2E PHPSTAN PINT TRUFFLEHOG; do
+            result="${!name}"
+            if [ "$result" != "success" ]; then
+              echo "::error::Required check $name did not pass (result: $result)"
+              failed=1
+            fi
+          done
+          if [ "$failed" = "1" ]; then
+            echo "Quality Gate failed: one or more required checks did not pass."
+            exit 1
+          fi
+          echo "Quality Gate passed: all required checks succeeded."
