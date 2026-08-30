@@ -15,6 +15,17 @@ class ApiDocumentationTest extends TestCase
             ->assertSee('SwaggerUIBundle');
     }
 
+    public function test_docs_ui_returns_404_in_production(): void
+    {
+        $this->app->detectEnvironment(fn () => 'production');
+
+        try {
+            $this->get('/docs')->assertNotFound();
+        } finally {
+            $this->app->detectEnvironment(fn () => 'testing');
+        }
+    }
+
     #[DataProvider('openApiYamlExpectedFragments')]
     public function test_openapi_yaml_is_served_outside_production(string $expectedFragment): void
     {
@@ -34,5 +45,16 @@ class ApiDocumentationTest extends TestCase
         yield 'openapi version' => ['openapi: 3.0.3'];
         yield 'api title' => ['title: RecipBot Backend API'];
         yield 'bearer scheme' => ['scheme: bearer'];
+    }
+
+    public function test_openapi_yaml_returns_404_in_production(): void
+    {
+        $this->app->detectEnvironment(fn () => 'production');
+
+        try {
+            $this->get('/docs/openapi.yaml')->assertNotFound();
+        } finally {
+            $this->app->detectEnvironment(fn () => 'testing');
+        }
     }
 }

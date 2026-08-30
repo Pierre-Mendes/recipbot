@@ -3,6 +3,8 @@ info:
   title: RecipBot Backend API
   version: 1.0.0
   description: OpenAPI for the current Laravel backend implementation.
+security:
+  - bearerAuth: []
 servers:
   - url: http://localhost:8000
     description: Local
@@ -421,7 +423,7 @@ components:
           schema:
             $ref: '#/components/schemas/MessageResponse'
           example:
-            message: Unauthenticated.
+            message: Unauthenticated
     Forbidden:
       description: Forbidden
       content:
@@ -540,7 +542,7 @@ components:
           type: string
         token_type:
           type: string
-          example: JWT
+          example: "\u0042earer"
         expires_in:
           type: integer
           description: Token expiration time in seconds.
