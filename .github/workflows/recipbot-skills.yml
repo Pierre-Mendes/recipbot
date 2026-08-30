@@ -1,0 +1,76 @@
+name: RecipBot Skills Integration Pipeline
+
+# Advisory automated review — it never gates the required CI checks.
+#
+# The previous version of this workflow shelled out to a `claude-code "..."`
+# CLI that does not exist on GitHub-hosted runners, so every job failed on
+# every run and an `if: always()` step still posted a comment claiming PDF/
+# XLSX artifacts that were never produced. This rewrite replaces that with the
+# official Claude Code GitHub Action, which actually runs on the runner. It is
+# opt-in (only runs when an ANTHROPIC_API_KEY secret is configured) and fully
+# advisory (continue-on-error), so it can never block the real Quality Gate
+# defined in ci.yml.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+# Least privilege: only what an advisory PR review needs.
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+# One review per PR head; cancel superseded runs (feature branches stack here).
+concurrency:
+  group: skills-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  claude-review:
+    name: Claude Code Review (advisory)
+    runs-on: ubuntu-latest
+    # A review that flags issues — or a missing API key — must never turn this
+    # check red and block the PR. The required gates live in ci.yml.
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        # Pinned to a commit SHA (not a mutable @v4 tag) to close the
+        # supply-chain risk Semgrep's mutable-action-tag rule flags.
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 1
+
+      # Secrets cannot be referenced in a job/step `if:`, so gate on a step
+      # output derived from the secret instead.
+      - name: Check for Anthropic credentials
+        id: cfg
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -n "$ANTHROPIC_API_KEY" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Claude review skipped::Set the ANTHROPIC_API_KEY repository secret to enable automated Claude Code reviews."
+          fi
+
+      - name: Claude Code review
+        if: steps.cfg.outputs.enabled == 'true'
+        # Pinned to a commit SHA rather than the mutable @v1 tag.
+        uses: anthropics/claude-code-action@923714f19352008835430ae7d21fa14865c3d476 # v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: |
+            Review this pull request for RecipBot (Laravel 11 API + Vue 3 frontend).
+
+            Focus on:
+            - Security: OWASP Top 10, SSRF in the scraper, XSS and token handling
+              in the Vue frontend, authorization scoping on API endpoints.
+            - Backend patterns: service layer, FormRequest validation, Pest
+              coverage (>= 80%), PHPStan level 8.
+            - Frontend: type safety, store/composable correctness, test coverage.
+
+            Leave concise, actionable inline comments. This is an advisory review
+            only — do not approve or merge.
