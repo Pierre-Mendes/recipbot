@@ -20,6 +20,9 @@ export default defineConfig({
     pool: 'threads',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
+    // e2e/*.spec.ts are Playwright specs, not vitest ones - default excludes
+    // plus this directory.
+    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary'],
