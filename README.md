@@ -88,6 +88,18 @@ docker-compose up --build
 ### Passo 5: Começar
 Leia `QUICK_START.md` para próximos passos.
 
+### Passo 6: Documentação da API (OpenAPI/Swagger)
+Com a aplicação rodando:
+
+```bash
+# Arquivo OpenAPI versionado
+cat docs/openapi.yaml
+```
+
+- Swagger UI: `http://localhost:8000/docs`
+- OpenAPI YAML: `http://localhost:8000/docs/openapi.yaml`
+- Em produção, essas rotas retornam `404`.
+
 ---
 
 ## 📋 Arquivos Principais
