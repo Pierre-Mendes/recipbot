@@ -20,6 +20,9 @@ env:
   PHP_VERSION: "8.4"
   PHP_EXTENSIONS: pdo, pdo_pgsql, mbstring, xml, json, bcmath, redis
 
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Test (backend)
@@ -327,6 +330,8 @@ jobs:
   frontend_security:
     name: Frontend dependency audit
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: frontend
