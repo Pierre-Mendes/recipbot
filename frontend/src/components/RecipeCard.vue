@@ -20,12 +20,12 @@ const props = withDefaults(
 const gradient = computed(() => titleGradient(props.recipe.title))
 
 const ingredientLabel = computed(() => {
-  const n = props.recipe.ingredients.length
+  const n = props.recipe.ingredients?.length ?? 0
   return `${n} ${n === 1 ? 'ingrediente' : 'ingredientes'}`
 })
 
 const ingredientPreview = computed(() =>
-  props.recipe.ingredients.slice(0, 3).join(', '),
+  (props.recipe.ingredients ?? []).slice(0, 3).join(', '),
 )
 
 const createdLabel = computed(() => relativeTime(props.recipe.created_at))
@@ -68,7 +68,7 @@ const createdLabel = computed(() => relativeTime(props.recipe.created_at))
         <p v-if="ingredientPreview" class="text-xs text-muted-foreground/80 truncate mt-1">
           {{ ingredientPreview }}
         </p>
-        <div v-if="recipe.tags.length" class="flex flex-wrap gap-1.5 mt-2">
+        <div v-if="recipe.tags?.length" class="flex flex-wrap gap-1.5 mt-2">
           <span
             v-for="tag in recipe.tags.slice(0, 3)"
             :key="tag"
@@ -76,8 +76,8 @@ const createdLabel = computed(() => relativeTime(props.recipe.created_at))
           >
             {{ tag }}
           </span>
-          <span v-if="recipe.tags.length > 3" class="text-xs text-muted-foreground px-1 py-0.5">
-            +{{ recipe.tags.length - 3 }}
+          <span v-if="recipe.tags?.length > 3" class="text-xs text-muted-foreground px-1 py-0.5">
+            +{{ recipe.tags?.length - 3 }}
           </span>
         </div>
       </CardContent>
@@ -125,7 +125,7 @@ const createdLabel = computed(() => relativeTime(props.recipe.created_at))
           {{ ingredientPreview }}
         </p>
 
-        <div v-if="recipe.tags.length" class="flex flex-wrap gap-1.5 mt-auto">
+        <div v-if="recipe.tags?.length" class="flex flex-wrap gap-1.5 mt-auto">
           <span
             v-for="tag in recipe.tags.slice(0, 3)"
             :key="tag"
@@ -133,8 +133,8 @@ const createdLabel = computed(() => relativeTime(props.recipe.created_at))
           >
             {{ tag }}
           </span>
-          <span v-if="recipe.tags.length > 3" class="text-xs text-muted-foreground px-1 py-0.5">
-            +{{ recipe.tags.length - 3 }}
+          <span v-if="recipe.tags?.length > 3" class="text-xs text-muted-foreground px-1 py-0.5">
+            +{{ recipe.tags?.length - 3 }}
           </span>
         </div>
       </CardContent>
