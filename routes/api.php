@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\RecipeController;
+use App\Http\Controllers\Api\RecipeSearchController;
+use App\Http\Controllers\Api\TagController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->group(function () {
@@ -15,5 +17,8 @@ Route::prefix('auth')->group(function () {
 });
 
 Route::middleware('auth:api')->group(function () {
+    Route::post('recipes/search', RecipeSearchController::class);
+    Route::post('recipes/from-url', [RecipeController::class, 'fromUrl']);
     Route::apiResource('recipes', RecipeController::class);
+    Route::get('tags', [TagController::class, 'suggestions']);
 });

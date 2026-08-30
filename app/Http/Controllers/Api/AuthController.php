@@ -10,7 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
-use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
+use PHPOpenSourceSaver\JWTAuth\JWTGuard;
 
 class AuthController
 {
@@ -54,11 +54,30 @@ class AuthController
     {
         $credentials = $request->only('email', 'password');
 
-        if (! $token = JWTAuth::attempt($credentials)) {
+        $guard = $this->jwtGuard();
+
+        if (! $token = $guard->attempt($credentials)) {
             return response()->json(['message' => 'Invalid credentials'], 401);
         }
 
+        // attempt()'s declared bool|string return is imprecise: with the
+        // default $login=true it's actually string|false, never true.
+        assert(is_string($token));
+
         return $this->respondWithToken($token);
+    }
+
+    /**
+     * The "api" guard is always the JWT guard (see config/auth.php); assert
+     * the concrete type since Auth::guard()'s contract type doesn't expose
+     * JWT-specific methods like attempt()'s string return or factory().
+     */
+    private function jwtGuard(): JWTGuard
+    {
+        $guard = Auth::guard('api');
+        assert($guard instanceof JWTGuard);
+
+        return $guard;
     }
 
     /**
@@ -66,11 +85,11 @@ class AuthController
      */
     public function logout(): JsonResponse
     {
-        if (! Auth::guard('api')->check()) {
+        if (! $this->jwtGuard()->check()) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
-        Auth::guard('api')->logout();
+        $this->jwtGuard()->logout();
 
         return response()->json(['message' => 'Logged out successfully']);
     }
@@ -88,7 +107,7 @@ class AuthController
         return response()->json([
             'access_token' => $token,
             'token_type' => 'Bearer',
-            'expires_in' => JWTAuth::factory()->getTTL() * 60,
+            'expires_in' => $this->jwtGuard()->factory()->getTTL() * 60,
         ]);
     }
 }
