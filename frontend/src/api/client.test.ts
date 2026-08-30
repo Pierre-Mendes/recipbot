@@ -7,8 +7,18 @@ import { getToken, setToken } from '@/utils/auth'
 // axios does not expose interceptor handlers in its public types, so the
 // internal array is reached through a loosely-typed alias for testing.
 const interceptors = apiClient.interceptors as unknown as {
-  request: { handlers: [{ fulfilled: (config: { headers: Record<string, string> }) => Promise<{ headers: Record<string, string> }> }] }
-  response: { handlers: [{ rejected: (error: { response: { status: number } }) => Promise<never> }] }
+  request: {
+    handlers: [
+      {
+        fulfilled: (config: {
+          headers: Record<string, string>
+        }) => Promise<{ headers: Record<string, string> }>
+      },
+    ]
+  }
+  response: {
+    handlers: [{ rejected: (error: { response: { status: number } }) => Promise<never> }]
+  }
 }
 
 describe('apiClient', () => {

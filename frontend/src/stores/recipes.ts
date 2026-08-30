@@ -11,21 +11,31 @@ export const useRecipesStore = defineStore('recipes', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
 
+  // fetchAll() and search() both write recipes/meta/loading, and a fast series
+  // of tag toggles (or clearing a filter mid-request) can leave a slower older
+  // request in flight. Track a monotonic sequence so only the newest request
+  // applies its result and clears loading; superseded ones are dropped.
+  let listRequestSeq = 0
+
   async function fetchAll(page = 1): Promise<void> {
+    const seq = ++listRequestSeq
     loading.value = true
     error.value = null
     try {
       const response = await recipesApi.listRecipes(page)
+      if (seq !== listRequestSeq) return
       recipes.value = response.data
       meta.value = response.meta
     } catch {
+      if (seq !== listRequestSeq) return
       error.value = 'Failed to load recipes'
     } finally {
-      loading.value = false
+      if (seq === listRequestSeq) loading.value = false
     }
   }
 
   async function search(query: string, selectedTags: string[], page = 1): Promise<void> {
+    const seq = ++listRequestSeq
     loading.value = true
     error.value = null
     try {
@@ -34,12 +44,14 @@ export const useRecipesStore = defineStore('recipes', () => {
         tags: selectedTags.length ? selectedTags : undefined,
         page,
       })
+      if (seq !== listRequestSeq) return
       recipes.value = response.data
       meta.value = response.meta
     } catch {
+      if (seq !== listRequestSeq) return
       error.value = 'Search failed'
     } finally {
-      loading.value = false
+      if (seq === listRequestSeq) loading.value = false
     }
   }
 

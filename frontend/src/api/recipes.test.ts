@@ -89,17 +89,19 @@ describe('recipes api', () => {
     expect(result).toEqual(recipe)
   })
 
-  it('searchRecipes posts the search filters', async () => {
-    const meta = { current_page: 1, total: 1, per_page: 20, last_page: 1 }
-    const post = vi
-      .spyOn(apiClient, 'post')
-      .mockResolvedValue({ data: { data: [recipe], meta } })
+  it('searchRecipes posts the filters and normalizes pagination to meta', async () => {
+    // The search endpoint returns paging under `pagination`, with `meta`
+    // carrying search telemetry - searchRecipes maps it to PaginatedRecipes.
+    const pagination = { current_page: 1, total: 1, per_page: 20, last_page: 1 }
+    const post = vi.spyOn(apiClient, 'post').mockResolvedValue({
+      data: { data: [recipe], pagination, meta: { search_time_ms: 5, cache_hit: false } },
+    })
 
     const input = { tags: ['sobremesa'], query: 'bolo', page: 1 }
     const result = await searchRecipes(input)
 
     expect(post).toHaveBeenCalledWith('/recipes/search', input)
-    expect(result).toEqual({ data: [recipe], meta })
+    expect(result).toEqual({ data: [recipe], meta: pagination })
   })
 
   it('listTags unwraps the tags array', async () => {

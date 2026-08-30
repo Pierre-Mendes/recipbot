@@ -14,12 +14,23 @@ const store = useRecipesStore()
 const recipe = ref<Recipe | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const fetching = ref(false)
+const loadError = ref(false)
 
 const recipeId = route.params.id as string | undefined
 
 onMounted(async () => {
   if (recipeId) {
-    recipe.value = await getRecipe(recipeId)
+    fetching.value = true
+    try {
+      recipe.value = await getRecipe(recipeId)
+    } catch {
+      // Don't leave the page stuck on "Loading..." forever when the recipe
+      // can't be fetched (deleted, network error, not found).
+      loadError.value = true
+    } finally {
+      fetching.value = false
+    }
   }
 })
 
@@ -56,7 +67,11 @@ async function handleSubmitFromUrl(input: FromUrlInput) {
       {{ recipeId ? 'Edit Recipe' : 'Add Recipe' }}
     </h1>
     <p v-if="error" class="mb-4 text-sm text-red-600">{{ error }}</p>
-    <p v-if="recipeId && !recipe" class="text-sm text-gray-500">Loading...</p>
+    <p v-if="fetching" class="text-sm text-gray-500">Loading...</p>
+    <div v-else-if="loadError" class="text-sm text-red-600">
+      Could not load this recipe. It may have been deleted.
+      <RouterLink to="/" class="text-purple-600">Back to recipes</RouterLink>
+    </div>
     <RecipeForm
       v-else
       :recipe="recipe"

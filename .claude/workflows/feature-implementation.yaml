@@ -1,0 +1,241 @@
+name: Feature Implementation Workflow
+version: "1.0"
+description: "Complete feature implementation with analysis, development, and quality review"
+
+# Trigger patterns
+triggers:
+  - "feature:"
+  - "implement:"
+  - "build:"
+
+# Workflow definition
+workflow:
+  id: feature-implementation
+  name: "Feature Implementation with Skills"
+  description: "Full-cycle feature development with TDD, documentation, and comprehensive review"
+
+  # Orchestration sequence
+  stages:
+    - name: "Planning & Analysis"
+      agent: AnalysisAgent
+      timeout_minutes: 20
+
+      tasks:
+        - name: "Extract Requirements"
+          subagent: SpecParser
+          description: "Parse feature specs and extract requirements"
+          context_focus: "context-specs.md"
+          skills_to_use:
+            - xlsx
+            - docx
+          outputs:
+            - requirements-document.docx
+            - task-breakdown.xlsx
+
+        - name: "Plan Implementation"
+          subagent: TaskPlanner
+          description: "Break down feature into implementable tasks"
+          context_focus: "context-roadmap.md"
+          skills_to_use:
+            - xlsx
+            - pptx
+          outputs:
+            - sprint-tasks.xlsx
+            - implementation-plan.pptx
+
+        - name: "Estimate & Risk Analysis"
+          subagent: BlockerAnalyzer
+          description: "Estimate effort and identify risks/dependencies"
+          context_focus: "context-architecture.md"
+          skills_to_use:
+            - artifact-diagramming
+            - xlsx
+          outputs:
+            - risk-assessment.xlsx
+            - architecture-diagram.svg
+
+      on_completion:
+        - pass_to_next_stage: true
+        - create_artifacts: true
+        - notify_team: "Feature planning complete, ready for development"
+
+    - name: "Development & Implementation"
+      agent: CodingAgent
+      timeout_minutes: 120
+      depends_on: "Planning & Analysis"
+
+      tasks:
+        - name: "Backend Development"
+          subagent: BackendBuilder
+          description: "Implement Laravel backend features"
+          context_focus: "context-backend.md"
+          skills_to_use:
+            - tdd
+            - docx
+            - pdf
+          outputs:
+            - implementation-code
+            - test-suite
+            - api-specification.docx
+
+        - name: "Frontend Development"
+          subagent: FrontendBuilder
+          description: "Implement Vue 3 frontend features"
+          context_focus: "context-frontend.md"
+          skills_to_use:
+            - tdd
+            - artifact-diagramming
+            - docx
+          outputs:
+            - component-code
+            - ui-tests
+            - component-diagram.svg
+
+        - name: "Database & Migrations"
+          subagent: DatabaseBuilder
+          description: "Create/update database migrations"
+          context_focus: "context-backend.md"
+          skills_to_use:
+            - docx
+          outputs:
+            - migration-files
+            - schema-documentation.docx
+
+        - name: "Git Management"
+          subagent: GitManager
+          description: "Create feature branch and commit work"
+          context_focus: "context-project.md"
+          operations:
+            - checkout_feature_branch
+            - stage_changes
+            - commit_with_message
+            - push_to_remote
+
+      quality_checks:
+        - phstan: "level 8"
+        - eslint: "strict"
+        - test_coverage: "≥80% backend, ≥70% frontend"
+
+      on_completion:
+        - pass_to_next_stage: true
+        - create_pr: "auto"
+        - notify_reviewers: true
+
+    - name: "Quality Gate & Review"
+      agent: ReviewAgent
+      timeout_minutes: 60
+      depends_on: "Development & Implementation"
+
+      tasks:
+        - name: "Security Audit"
+          subagent: SecurityAuditor
+          description: "OWASP Top 10 validation and security review"
+          context_focus: "context-security.md"
+          skills_to_use:
+            - recipbot-code-reviewer
+            - pdf
+            - to-issues
+          outputs:
+            - security-report.pdf
+            - critical-issues (auto-created in GitHub)
+
+        - name: "Performance Analysis"
+          subagent: PerformanceReviewer
+          description: "Performance SLA validation and optimization"
+          context_focus: "context-performance.md"
+          skills_to_use:
+            - recipbot-code-reviewer
+            - dataviz
+            - xlsx
+          outputs:
+            - performance-metrics.xlsx
+            - performance-chart.png
+
+        - name: "Code Quality Check"
+          subagent: CodeStyleChecker
+          description: "Lint, style, and pattern validation"
+          context_focus: "context-quality.md"
+          skills_to_use:
+            - recipbot-code-reviewer
+          outputs:
+            - code-quality-report
+
+        - name: "Test Coverage Analysis"
+          subagent: TestCoverageAnalyzer
+          description: "Test quality and coverage validation"
+          context_focus: "definitions.md"
+          skills_to_use:
+            - test-reviewer
+            - xlsx
+            - dataviz
+          outputs:
+            - coverage-metrics.xlsx
+            - coverage-chart.png
+
+      reporting:
+        - generate_pr_comment: true
+        - create_issues: true
+        - attach_artifacts: true
+        - send_summary: true
+
+      on_completion:
+        - success: "Feature ready for merge"
+        - failure: "Blocking issues found, back to development"
+
+# Success criteria
+success_criteria:
+  - all_tasks_completed: true
+  - no_security_findings: "P0"
+  - test_coverage_met: true
+  - performance_slas_met: true
+  - code_quality_passed: true
+  - pr_approved: true
+
+# Failure handling
+on_failure:
+  - notify_team: true
+  - create_investigation_task: true
+  - log_details: true
+  - suggest_fixes: true
+
+# Deliverables summary
+deliverables:
+  analysis_phase:
+    - requirements-document.docx
+    - sprint-tasks.xlsx
+    - implementation-plan.pptx
+    - risk-assessment.xlsx
+    - architecture-diagram.svg
+
+  development_phase:
+    - feature-branch
+    - implementation-code
+    - test-suite
+    - api-specification.docx
+    - database-migrations
+    - pull-request
+
+  review_phase:
+    - security-report.pdf
+    - performance-metrics.xlsx
+    - performance-chart.png
+    - coverage-metrics.xlsx
+    - coverage-chart.png
+    - github-issues (critical findings)
+    - pr-comment (summary)
+
+# Environment
+environment:
+  php_version: "8.5"
+  node_version: "20"
+  database: "postgresql-16"
+  cache: "redis-7"
+
+# Slack notifications (if configured)
+notifications:
+  on_start: "🚀 Feature implementation started: {feature_name}"
+  on_planning_complete: "📋 Planning complete, starting development"
+  on_dev_complete: "✅ Development complete, starting review"
+  on_review_complete: "🔍 Review complete, waiting for approval"
+  on_success: "🎉 Feature successfully implemented and merged!"
+  on_failure: "❌ Feature implementation failed: {reason}"

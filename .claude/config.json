@@ -1,0 +1,129 @@
+{
+  "project": {
+    "name": "RecipBot MVP",
+    "version": "1.0.0",
+    "description": "Gerenciador de Receitas Pessoais - Laravel 11 + Vue 3 + PostgreSQL 16",
+    "repository": "https://github.com/Pierre-Mendes/recipbot",
+    "tech_stack": [
+      "Laravel 11",
+      "Vue 3",
+      "PostgreSQL 16",
+      "Redis 7"
+    ],
+    "custo": "$0",
+    "timeline": "6 semanas (225 horas)"
+  },
+  "agents": {
+    "enabled": true,
+    "strategy": "specialized-roles",
+    "orchestrator": {
+      "name": "Master Orchestrator",
+      "model": "claude-opus",
+      "role": "Coordena e delega tarefas para agents especializados"
+    },
+    "agents": [
+      {
+        "id": "coding",
+        "name": "CodingAgent",
+        "role": "Code Implementation",
+        "model": "claude-opus",
+        "temperature": 0.2,
+        "max_context_kb": 200,
+        "timeout_minutes": 60,
+        "description": "Implementa features, corrige bugs, refatora código",
+        "context_files": [
+          "agents/coding/context-backend.md",
+          "agents/coding/context-frontend.md",
+          "agents/coding/context-project.md",
+          "shared/conventions.md"
+        ],
+        "subagents_count": 4,
+        "enabled": true
+      },
+      {
+        "id": "review",
+        "name": "ReviewAgent",
+        "role": "Quality & Security Review",
+        "model": "claude-sonnet",
+        "temperature": 0.1,
+        "max_context_kb": 150,
+        "timeout_minutes": 30,
+        "description": "Analisa segurança, qualidade, performance, coverage",
+        "context_files": [
+          "agents/review/context-quality.md",
+          "agents/review/context-security.md",
+          "agents/review/context-performance.md",
+          "shared/definitions.md"
+        ],
+        "subagents_count": 4,
+        "enabled": true
+      },
+      {
+        "id": "analysis",
+        "name": "AnalysisAgent",
+        "role": "Planning & Requirements",
+        "model": "claude-sonnet",
+        "temperature": 0.3,
+        "max_context_kb": 150,
+        "timeout_minutes": 20,
+        "description": "Analisa specs, planeja sprints, estima tarefas",
+        "context_files": [
+          "agents/analysis/context-specs.md",
+          "agents/analysis/context-architecture.md",
+          "agents/analysis/context-roadmap.md",
+          "shared/glossary.md"
+        ],
+        "subagents_count": 4,
+        "enabled": true
+      }
+    ]
+  },
+  "context_windows_kb": {
+    "shared": 30,
+    "coding_specific": 60,
+    "review_specific": 50,
+    "analysis_specific": 40
+  },
+  "workflows": {
+    "feature_implementation": {
+      "file": "workflows/feature-implementation.yaml",
+      "agents_sequence": [
+        "AnalysisAgent",
+        "CodingAgent",
+        "ReviewAgent"
+      ]
+    },
+    "code_review": {
+      "file": "workflows/code-review.yaml",
+      "agents_sequence": [
+        "ReviewAgent",
+        "CodingAgent",
+        "ReviewAgent"
+      ]
+    },
+    "sprint_planning": {
+      "file": "workflows/sprint-planning.yaml",
+      "agents_sequence": [
+        "AnalysisAgent"
+      ]
+    }
+  },
+  "github_mcp": {
+    "enabled": true,
+    "automation": {
+      "pr_comments": [
+        "@claude-code feature:",
+        "@claude-code review:",
+        "@claude-code analysis:"
+      ],
+      "auto_rebase": true,
+      "auto_merge": false
+    }
+  },
+  "logging": {
+    "level": "info",
+    "format": "json",
+    "agents_log": true,
+    "subagents_log": true
+  }
+}
