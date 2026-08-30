@@ -6,6 +6,7 @@ import RecipeForm from '@/components/RecipeForm.vue'
 import { getRecipe } from '@/api/recipes'
 import type { FromUrlInput, Recipe, RecipeFormInput } from '@/types'
 import { useRecipesStore } from '@/stores/recipes'
+import { extractValidationErrors } from '@/utils/errors'
 
 const route = useRoute()
 const router = useRouter()
@@ -16,6 +17,7 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const fetching = ref(false)
 const loadError = ref(false)
+const validationErrors = ref<Record<string, string[]>>({})
 
 const recipeId = route.params.id as string | undefined
 
@@ -37,10 +39,12 @@ onMounted(async () => {
 async function handleSubmit(input: RecipeFormInput) {
   loading.value = true
   error.value = null
+  validationErrors.value = {}
   try {
     const saved = recipeId ? await store.update(recipeId, input) : await store.create(input)
     router.push({ name: 'recipe-detail', params: { id: saved.id } })
-  } catch {
+  } catch (e) {
+    validationErrors.value = extractValidationErrors(e)
     error.value = 'Could not save recipe. Check the form and try again.'
   } finally {
     loading.value = false
@@ -50,10 +54,12 @@ async function handleSubmit(input: RecipeFormInput) {
 async function handleSubmitFromUrl(input: FromUrlInput) {
   loading.value = true
   error.value = null
+  validationErrors.value = {}
   try {
     const saved = await store.createFromUrl(input)
     router.push({ name: 'recipe-detail', params: { id: saved.id } })
-  } catch {
+  } catch (e) {
+    validationErrors.value = extractValidationErrors(e)
     error.value = 'Could not import recipe from that URL.'
   } finally {
     loading.value = false
@@ -76,6 +82,7 @@ async function handleSubmitFromUrl(input: FromUrlInput) {
       v-else
       :recipe="recipe"
       :loading="loading"
+      :errors="validationErrors"
       @submit="handleSubmit"
       @submit-from-url="handleSubmitFromUrl"
     />

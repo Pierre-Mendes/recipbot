@@ -1,0 +1,53 @@
+name: Promote Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: "Target environment"
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - production
+      release_ref:
+        description: "Git ref (branch/tag/sha) to promote"
+        required: true
+        default: main
+        type: string
+      rollback_ref:
+        description: "Optional rollback ref"
+        required: false
+        type: string
+
+jobs:
+  promote:
+    name: Promote to ${{ inputs.target_environment }}
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.target_environment }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.release_ref }}
+
+      - name: Validate release ref
+        run: git rev-parse --verify HEAD
+
+      - name: Print promotion plan
+        run: |
+          echo "Promoting ref: ${{ inputs.release_ref }}"
+          echo "Target environment: ${{ inputs.target_environment }}"
+          if [ -n "${{ inputs.rollback_ref }}" ]; then
+            echo "Rollback ref configured: ${{ inputs.rollback_ref }}"
+          else
+            echo "No rollback ref provided."
+          fi
+
+      - name: Deploy checklist gate
+        run: |
+          echo "1) Confirm health checks"
+          echo "2) Run migrations safely"
+          echo "3) Verify queue workers and scheduler"
+          echo "4) Validate smoke checks"

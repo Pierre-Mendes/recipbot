@@ -11,8 +11,9 @@ const props = withDefaults(
   defineProps<{
     recipe?: Recipe | null
     loading?: boolean
+    errors?: Record<string, string[]>
   }>(),
-  { recipe: null, loading: false },
+  { recipe: null, loading: false, errors: () => ({}) },
 )
 
 const emit = defineEmits<{
@@ -59,6 +60,15 @@ function handleUrlSubmit() {
     tags: parseTags(importTagsText.value),
   })
 }
+
+function firstError(field: string): string | null {
+  const value = props.errors[field]
+  if (!value || value.length === 0) {
+    return null
+  }
+
+  return value[0]
+}
 </script>
 
 <template>
@@ -93,6 +103,7 @@ function handleUrlSubmit() {
           minlength="3"
           class="mt-1 w-full rounded border border-gray-300 px-3 py-2"
         />
+        <p v-if="firstError('title')" class="mt-1 text-xs text-red-600">{{ firstError('title') }}</p>
       </div>
       <div>
         <label class="block text-sm font-medium text-gray-700" for="ingredients"
@@ -105,6 +116,12 @@ function handleUrlSubmit() {
           rows="6"
           class="mt-1 w-full rounded border border-gray-300 px-3 py-2"
         />
+        <p v-if="firstError('ingredients')" class="mt-1 text-xs text-red-600">
+          {{ firstError('ingredients') }}
+        </p>
+        <p v-if="firstError('ingredients.0')" class="mt-1 text-xs text-red-600">
+          {{ firstError('ingredients.0') }}
+        </p>
       </div>
       <div>
         <label class="block text-sm font-medium text-gray-700" for="tags"
@@ -116,6 +133,19 @@ function handleUrlSubmit() {
           type="text"
           class="mt-1 w-full rounded border border-gray-300 px-3 py-2"
         />
+        <p v-if="firstError('tags')" class="mt-1 text-xs text-red-600">{{ firstError('tags') }}</p>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700" for="source_url">Source URL</label>
+        <input
+          id="source_url"
+          v-model="sourceUrl"
+          type="url"
+          class="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+        />
+        <p v-if="firstError('source_url')" class="mt-1 text-xs text-red-600">
+          {{ firstError('source_url') }}
+        </p>
       </div>
       <button
         type="submit"
@@ -137,6 +167,7 @@ function handleUrlSubmit() {
           placeholder="https://www.tudogostoso.com.br/receita/..."
           class="mt-1 w-full rounded border border-gray-300 px-3 py-2"
         />
+        <p v-if="firstError('url')" class="mt-1 text-xs text-red-600">{{ firstError('url') }}</p>
         <p class="mt-1 text-xs text-gray-500">
           Supports tudogostoso.com.br, cybercook.com.br, and receitas.globo.com
         </p>
@@ -151,6 +182,9 @@ function handleUrlSubmit() {
           type="text"
           class="mt-1 w-full rounded border border-gray-300 px-3 py-2"
         />
+        <p v-if="firstError('tags.0')" class="mt-1 text-xs text-red-600">
+          {{ firstError('tags.0') }}
+        </p>
       </div>
       <button
         type="submit"

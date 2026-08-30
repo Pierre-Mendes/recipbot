@@ -74,9 +74,34 @@ class Recipe extends Model
             'ingredients.*' => ['string', 'max:255'],
             'instructions' => ['nullable', 'array', 'max:50'],
             'instructions.*' => ['string', 'max:1000'],
-            'tags' => ['array', 'max:10'],
+            'tags' => ['nullable', 'array', 'max:10'],
             'tags.*' => ['string', 'max:50', 'regex:/^[a-zA-Z0-9 -]+$/'],
             'source_url' => ['nullable', 'url', 'max:2048'],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function createRules(): array
+    {
+        return self::rules();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function updateRules(): array
+    {
+        return [
+            'title' => ['sometimes', 'string', 'min:3', 'max:255'],
+            'ingredients' => ['sometimes', 'array', 'min:1', 'max:20'],
+            'ingredients.*' => ['string', 'max:255'],
+            'instructions' => ['sometimes', 'nullable', 'array', 'max:50'],
+            'instructions.*' => ['string', 'max:1000'],
+            'tags' => ['sometimes', 'nullable', 'array', 'max:10'],
+            'tags.*' => ['string', 'max:50', 'regex:/^[a-zA-Z0-9 -]+$/'],
+            'source_url' => ['sometimes', 'nullable', 'url', 'max:2048'],
         ];
     }
 

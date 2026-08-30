@@ -5,6 +5,9 @@ This checklist validates RecipBot MVP against all 10 OWASP Top 10 2023 vulnerabi
 
 Status: ✅ **ALL CRITICAL CONTROLS IMPLEMENTED**
 
+> Contract alignment note: API payload contracts are defined in `specs/recipe-management.spec.md` and `specs/recipe-search.spec.md`.  
+> If any illustrative snippet in this checklist diverges from live contracts, follow specs and implementation.
+
 ---
 
 ## A01: Broken Access Control

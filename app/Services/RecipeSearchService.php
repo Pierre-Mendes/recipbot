@@ -22,6 +22,7 @@ class RecipeSearchService
      */
     public function search(User $user, array $tags = [], ?string $query = null, int $page = 1, int $perPage = 20): array
     {
+        $tags = $this->normalizeTags($tags);
         $cacheKey = $this->searchCacheKey($user, $tags, $query, $page, $perPage);
         $store = Cache::tags([$this->userSearchCacheTag($user)]);
 
@@ -42,7 +43,7 @@ class RecipeSearchService
      */
     private function runSearchQuery(User $user, array $tags, ?string $query, int $page, int $perPage): LengthAwarePaginator
     {
-        $builder = $user->recipes()->orderByDesc('created_at');
+        $builder = $user->recipes();
 
         if ($tags !== []) {
             $builder->whereRaw('tags @> ?', [json_encode($tags) ?: '[]']);
@@ -51,7 +52,7 @@ class RecipeSearchService
         $query = $query !== null ? trim($query) : '';
 
         if ($query !== '') {
-            $terms = preg_split('/\s+/', $query) ?: [];
+            $terms = array_values(array_unique(array_filter(preg_split('/\s+/', $query) ?: [])));
 
             foreach ($terms as $term) {
                 $builder->where(function ($sub) use ($term) {
@@ -59,7 +60,20 @@ class RecipeSearchService
                         ->orWhereRaw('ingredients::text ILIKE ?', ["%{$term}%"]);
                 });
             }
+
+            $queryLower = mb_strtolower($query);
+            $builder->orderByRaw(
+                'CASE
+                    WHEN lower(title) = ? THEN 0
+                    WHEN title ILIKE ? THEN 1
+                    WHEN ingredients::text ILIKE ? THEN 2
+                    ELSE 3
+                 END',
+                [$queryLower, "{$query}%", "%{$query}%"]
+            );
         }
+
+        $builder->orderByDesc('created_at')->orderByDesc('id');
 
         return $builder->paginate($perPage, ['*'], 'page', $page);
     }
@@ -145,5 +159,19 @@ class RecipeSearchService
         ]) ?: '');
 
         return "user:{$user->id}:recipes:search:{$signature}";
+    }
+
+    /**
+     * @param  list<string>  $tags
+     * @return list<string>
+     */
+    private function normalizeTags(array $tags): array
+    {
+        $clean = array_filter(
+            array_map(fn (string $tag) => trim($tag), $tags),
+            fn (string $tag) => $tag !== ''
+        );
+
+        return array_values(array_unique($clean));
     }
 }

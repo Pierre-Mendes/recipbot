@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Recipe;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateRecipeRequest extends FormRequest
@@ -16,16 +17,7 @@ class UpdateRecipeRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-            'title' => ['sometimes', 'string', 'min:3', 'max:255'],
-            'ingredients' => ['sometimes', 'array', 'min:1', 'max:20'],
-            'ingredients.*' => ['string', 'max:500'],
-            'instructions' => ['sometimes', 'nullable', 'array', 'max:50'],
-            'instructions.*' => ['string', 'max:1000'],
-            'tags' => ['nullable', 'array', 'max:10'],
-            'tags.*' => ['string', 'max:50'],
-            'source_url' => ['nullable', 'url', 'max:2048'],
-        ];
+        return Recipe::updateRules();
     }
 
     /**

@@ -29,9 +29,9 @@ class RecipeControllerTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonStructure([
                 'data' => [
-                    '*' => ['id', 'user_id', 'title', 'ingredients', 'tags', 'created_at'],
+                    '*' => ['id', 'user_id', 'title', 'ingredients', 'instructions', 'tags', 'created_at'],
                 ],
-                'meta' => ['current_page', 'total', 'per_page', 'last_page'],
+                'meta' => ['pagination' => ['current_page', 'total', 'per_page', 'last_page']],
             ])
             ->assertJsonCount(5, 'data');
     }
@@ -215,5 +215,13 @@ class RecipeControllerTest extends TestCase
     {
         $response = $this->getJson('/api/recipes');
         $response->assertStatus(401);
+    }
+
+    public function test_list_rejects_out_of_range_per_page(): void
+    {
+        $response = $this->actingAs($this->user, 'api')
+            ->getJson('/api/recipes?per_page=999');
+
+        $response->assertStatus(422)->assertJsonValidationErrors(['per_page']);
     }
 }

@@ -32,7 +32,7 @@ describe('auth api', () => {
 
   it('login posts credentials and returns the token payload', async () => {
     const tokenPayload = { access_token: 'abc', token_type: 'Bearer', expires_in: 3600 }
-    const post = vi.spyOn(apiClient, 'post').mockResolvedValue({ data: tokenPayload })
+    const post = vi.spyOn(apiClient, 'post').mockResolvedValue({ data: { data: tokenPayload } })
 
     const result = await login({ email: 'p@example.com', password: 'password123' })
 

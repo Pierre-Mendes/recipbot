@@ -36,7 +36,8 @@ export default async function globalSetup(): Promise<void> {
   if (!loginRes.ok) {
     throw new Error(`E2E setup: login failed with ${loginRes.status}`)
   }
-  const { access_token: token } = (await loginRes.json()) as { access_token: string }
+  const { data } = (await loginRes.json()) as { data: { access_token: string } }
+  const token = data.access_token
 
   mkdirSync(path.dirname(AUTH_FILE), { recursive: true })
   writeFileSync(

@@ -25,15 +25,30 @@ export interface PaginationMeta {
   last_page: number
 }
 
+export interface ApiMeta {
+  pagination?: PaginationMeta
+  search_time_ms?: number
+  cache_hit?: boolean
+  request_id?: string
+}
+
+export interface ApiResponse<T> {
+  data: T
+  message?: string
+  meta?: ApiMeta
+}
+
 export interface PaginatedRecipes {
   data: Recipe[]
   meta: PaginationMeta
 }
 
 export interface LoginResponse {
-  access_token: string
-  token_type: string
-  expires_in: number
+  data: {
+    access_token: string
+    token_type: string
+    expires_in: number
+  }
 }
 
 export interface TagCount {

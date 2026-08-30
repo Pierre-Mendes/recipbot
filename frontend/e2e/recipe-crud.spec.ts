@@ -68,4 +68,13 @@ test.describe('recipe CRUD (manual entry)', () => {
     await expect(page.getByRole('heading', { name: 'Add Recipe' })).toBeVisible()
     await expect(titleInput).toHaveJSProperty('validity.valid', false)
   })
+
+  test('shows an error when URL import is blocked', async ({ page }) => {
+    await page.getByRole('link', { name: 'Add Recipe' }).click()
+    await page.getByRole('button', { name: 'Import from URL' }).click()
+    await page.getByLabel('Recipe URL').fill('https://example.com/not-whitelisted')
+    await page.getByRole('button', { name: 'Import recipe' }).click()
+
+    await expect(page.getByText('Could not import recipe from that URL.')).toBeVisible()
+  })
 })

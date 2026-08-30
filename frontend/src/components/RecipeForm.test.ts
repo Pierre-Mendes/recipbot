@@ -83,4 +83,18 @@ describe('RecipeForm', () => {
     expect(screen.getByLabelText('Ingredients (one per line)')).toHaveValue('farinha\nacucar')
     expect(screen.getByLabelText('Tags (comma separated)')).toHaveValue('sobremesa')
   })
+
+  it('renders field-level validation errors', () => {
+    render(RecipeForm, {
+      props: {
+        errors: {
+          title: ['Recipe title is required'],
+          source_url: ['Source URL must be a valid URL'],
+        },
+      },
+    })
+
+    expect(screen.getByText('Recipe title is required')).toBeInTheDocument()
+    expect(screen.getByText('Source URL must be a valid URL')).toBeInTheDocument()
+  })
 })
