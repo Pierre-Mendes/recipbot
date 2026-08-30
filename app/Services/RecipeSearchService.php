@@ -23,6 +23,7 @@ class RecipeSearchService
     public function search(User $user, array $tags = [], ?string $query = null, int $page = 1, int $perPage = 20): array
     {
         $tags = $this->normalizeTags($tags);
+        $query = $query !== null ? trim($query) : null;
         $cacheKey = $this->searchCacheKey($user, $tags, $query, $page, $perPage);
         $store = Cache::tags([$this->userSearchCacheTag($user)]);
 

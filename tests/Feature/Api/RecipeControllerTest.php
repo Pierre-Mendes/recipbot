@@ -115,6 +115,19 @@ class RecipeControllerTest extends TestCase
             ->assertJsonValidationErrors(['ingredients']);
     }
 
+    public function test_rejects_null_tags_in_create_payload(): void
+    {
+        $response = $this->actingAs($this->user, 'api')
+            ->postJson('/api/recipes', [
+                'title' => 'Test Recipe',
+                'ingredients' => ['salt'],
+                'tags' => null,
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['tags']);
+    }
+
     public function test_title_validation_required(): void
     {
         $response = $this->actingAs($this->user, 'api')
@@ -176,6 +189,19 @@ class RecipeControllerTest extends TestCase
             'id' => $recipe->id,
             'title' => 'Updated Title',
         ]);
+    }
+
+    public function test_rejects_null_tags_in_update_payload(): void
+    {
+        $recipe = Recipe::factory()->for($this->user)->create();
+
+        $response = $this->actingAs($this->user, 'api')
+            ->patchJson("/api/recipes/{$recipe->id}", [
+                'tags' => null,
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['tags']);
     }
 
     public function test_cannot_update_others_recipe(): void

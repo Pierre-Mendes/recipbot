@@ -39,11 +39,15 @@ jobs:
         run: git rev-parse --verify HEAD
 
       - name: Print promotion plan
+        env:
+          RELEASE_REF: ${{ inputs.release_ref }}
+          TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
+          ROLLBACK_REF: ${{ inputs.rollback_ref }}
         run: |
-          echo "Promoting ref: ${{ inputs.release_ref }}"
-          echo "Target environment: ${{ inputs.target_environment }}"
-          if [ -n "${{ inputs.rollback_ref }}" ]; then
-            echo "Rollback ref configured: ${{ inputs.rollback_ref }}"
+          echo "Promoting ref: \"$RELEASE_REF\""
+          echo "Target environment: \"$TARGET_ENVIRONMENT\""
+          if [ -n "$ROLLBACK_REF" ]; then
+            echo "Rollback ref configured: \"$ROLLBACK_REF\""
           else
             echo "No rollback ref provided."
           fi

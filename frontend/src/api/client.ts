@@ -10,7 +10,7 @@ export const apiClient = axios.create({ baseURL })
 apiClient.interceptors.request.use((config) => {
   const token = getToken()
   if (token) {
-    config.headers.Authorization = ['B', 'earer ', token].join('')
+    config.headers.Authorization = 'Bearer ' + token
   }
   return config
 })

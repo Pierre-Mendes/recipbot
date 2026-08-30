@@ -610,27 +610,3 @@ jobs:
             echo "| Semgrep SAST | ${{ needs.semgrep.result }} |"
             echo "| OWASP ZAP DAST | ${{ needs.dast.result }} |"
           } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Comment advisory status on PR
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const results = {
-              'E2E (Playwright)': '${{ needs.e2e.result }}',
-              'composer audit': '${{ needs.security.result }}',
-              'npm audit (prod deps)': '${{ needs.frontend_security.result }}',
-              'Semgrep SAST': '${{ needs.semgrep.result }}',
-              'OWASP ZAP DAST': '${{ needs.dast.result }}',
-            };
-            const lines = Object.entries(results).map(([name, result]) => {
-              const icon = result === 'success' ? '✅' : result === 'skipped' ? '⚪' : '⚠️';
-              return `${icon} ${name}: ${result}`;
-            });
-            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `**ℹ️ Advisory quality checks finished.**\n\n${lines.join('\n')}\n\n🔎 Full run details: ${runUrl}`,
-            });
