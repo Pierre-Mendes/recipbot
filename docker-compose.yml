@@ -58,7 +58,7 @@ services:
       REDIS_PORT: 6379
       QUEUE_CONNECTION: redis
       SESSION_DRIVER: redis
-      CACHE_DRIVER: redis
+      CACHE_STORE: redis
       BROADCAST_DRIVER: redis
     ports:
       - "8000:8000"

@@ -117,7 +117,7 @@ class RecipeController
     {
         Gate::authorize('delete', $recipe);
 
-        $recipe->delete();
+        $this->recipes->delete($recipe);
 
         return response()->json(['message' => 'Recipe deleted successfully']);
     }
