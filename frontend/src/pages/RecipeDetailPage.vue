@@ -6,15 +6,21 @@ import { Pencil, Trash2, Link as LinkIcon, ChefHat, ArrowLeft } from 'lucide-vue
 import { getRecipe } from '@/api/recipes'
 import type { Recipe } from '@/types'
 import { useRecipesStore } from '@/stores/recipes'
+import { useToast } from '@/composables/useToast'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import Button from '@/components/ui/Button.vue'
 import Card from '@/components/ui/Card.vue'
 import CardContent from '@/components/ui/CardContent.vue'
+import Skeleton from '@/components/ui/Skeleton.vue'
 
 const route = useRoute()
 const router = useRouter()
 const store = useRecipesStore()
+const toast = useToast()
+const { confirm } = useConfirmDialog()
 
 const recipe = ref<Recipe | null>(null)
+const loading = ref(true)
 const notFound = ref(false)
 
 const id = route.params.id as string
@@ -24,13 +30,28 @@ onMounted(async () => {
     recipe.value = await getRecipe(id)
   } catch {
     notFound.value = true
+  } finally {
+    loading.value = false
   }
 })
 
 async function handleDelete() {
-  if (!confirm('Tem certeza de que deseja excluir esta receita?')) return
-  await store.remove(id)
-  router.push({ name: 'recipes' })
+  const confirmed = await confirm({
+    title: 'Excluir receita',
+    message: 'Tem certeza de que deseja excluir esta receita? Esta ação não pode ser desfeita.',
+    confirmLabel: 'Excluir',
+    cancelLabel: 'Cancelar',
+    variant: 'destructive',
+  })
+  if (!confirmed) return
+
+  try {
+    await store.remove(id)
+    toast.success('Receita excluída com sucesso.')
+    router.push({ name: 'recipes' })
+  } catch {
+    toast.error('Não foi possível excluir a receita. Tente novamente.')
+  }
 }
 
 function goBack() {
@@ -39,20 +60,50 @@ function goBack() {
 </script>
 
 <template>
-  <div v-if="notFound" class="flex flex-col items-center justify-center py-20 text-center animate-in fade-in">
+  <!-- Loading skeleton (mirrors the real layout) -->
+  <div v-if="loading" class="animate-in fade-in duration-300">
+    <Skeleton class="h-8 w-24 mb-6" />
+    <div class="mb-8">
+      <Skeleton class="h-10 w-2/3 mb-4" />
+      <div class="flex gap-2">
+        <Skeleton class="h-6 w-20 rounded-full" />
+        <Skeleton class="h-6 w-24 rounded-full" />
+      </div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div class="md:col-span-1">
+        <Card class="border-border/50">
+          <CardContent class="p-6 space-y-3">
+            <Skeleton class="h-6 w-32 mb-4" />
+            <Skeleton v-for="i in 5" :key="i" class="h-4 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+      <div class="md:col-span-2">
+        <Card class="border-border/50">
+          <CardContent class="p-6 sm:p-8 space-y-4">
+            <Skeleton class="h-7 w-40 mb-4" />
+            <Skeleton v-for="i in 6" :key="i" class="h-4 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  </div>
+
+  <div v-else-if="notFound" class="flex flex-col items-center justify-center py-20 text-center animate-in fade-in">
     <ChefHat class="h-16 w-16 text-muted-foreground/30 mb-4" />
     <h2 class="text-2xl font-semibold mb-2">Receita não encontrada</h2>
     <p class="text-muted-foreground mb-6">A receita que você está procurando não existe ou foi removida.</p>
     <Button @click="goBack">Voltar para receitas</Button>
   </div>
-  
+
   <div v-else-if="recipe" class="animate-in fade-in slide-in-from-bottom-4 duration-500">
     <!-- Botão Voltar -->
     <Button variant="ghost" size="sm" @click="goBack" class="mb-6 -ml-3 text-muted-foreground hover:text-foreground">
       <ArrowLeft class="mr-2 h-4 w-4" />
       Voltar
     </Button>
-  
+
     <!-- Hero Section -->
     <div class="mb-8">
       <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
@@ -101,11 +152,11 @@ function goBack() {
             </ul>
           </CardContent>
         </Card>
-        
-        <a 
-          v-if="recipe.source_url" 
-          :href="recipe.source_url" 
-          target="_blank" 
+
+        <a
+          v-if="recipe.source_url"
+          :href="recipe.source_url"
+          target="_blank"
           rel="noopener"
           class="flex items-center justify-center gap-2 w-full rounded-lg border border-border bg-muted/50 p-4 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >

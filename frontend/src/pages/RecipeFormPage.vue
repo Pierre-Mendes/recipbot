@@ -7,11 +7,13 @@ import RecipeForm from '@/components/RecipeForm.vue'
 import { getRecipe } from '@/api/recipes'
 import type { FromUrlInput, Recipe, RecipeFormInput } from '@/types'
 import { useRecipesStore } from '@/stores/recipes'
+import { useToast } from '@/composables/useToast'
 import Button from '@/components/ui/Button.vue'
 
 const route = useRoute()
 const router = useRouter()
 const store = useRecipesStore()
+const toast = useToast()
 
 const recipe = ref<Recipe | null>(null)
 const loading = ref(false)
@@ -30,9 +32,11 @@ async function handleSubmit(input: RecipeFormInput) {
   error.value = null
   try {
     const saved = recipeId ? await store.update(recipeId, input) : await store.create(input)
+    toast.success(recipeId ? 'Receita atualizada com sucesso.' : 'Receita criada com sucesso.')
     router.push({ name: 'recipe-detail', params: { id: saved.id } })
   } catch {
     error.value = 'Não foi possível salvar a receita. Verifique o formulário e tente novamente.'
+    toast.error(error.value)
   } finally {
     loading.value = false
   }
@@ -43,9 +47,11 @@ async function handleSubmitFromUrl(input: FromUrlInput) {
   error.value = null
   try {
     const saved = await store.createFromUrl(input)
+    toast.success('Receita importada com sucesso.')
     router.push({ name: 'recipe-detail', params: { id: saved.id } })
   } catch {
     error.value = 'Não foi possível importar a receita desta URL.'
+    toast.error(error.value)
   } finally {
     loading.value = false
   }

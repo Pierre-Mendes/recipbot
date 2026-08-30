@@ -3,22 +3,36 @@ import { describe, expect, it } from 'vitest'
 
 import RecipeForm from '@/components/RecipeForm.vue'
 
+const TAGS_LABEL = 'Tags (pressione vírgula ou Enter para adicionar)'
+
 describe('RecipeForm', () => {
-  it('emits parsed title/ingredients/tags on manual submit', async () => {
+  it('emits parsed title/ingredients/instructions/tags on manual submit', async () => {
     const { emitted } = render(RecipeForm)
 
-    await fireEvent.update(screen.getByLabelText('Title'), 'Bolo de Chocolate')
+    await fireEvent.update(screen.getByLabelText('Título'), 'Bolo de Chocolate')
     await fireEvent.update(
-      screen.getByLabelText('Ingredients (one per line)'),
+      screen.getByLabelText('Ingredientes (um por linha)'),
       'farinha\nacucar\novos',
     )
-    await fireEvent.update(screen.getByLabelText('Tags (comma separated)'), 'sobremesa, chocolate')
-    await fireEvent.click(screen.getByRole('button', { name: 'Create recipe' }))
+    await fireEvent.update(
+      screen.getByLabelText('Modo de Preparo (um passo por linha)'),
+      'Misture os secos\nAsse por 40 minutos',
+    )
+
+    // Tags are chips: type each one and confirm with Enter.
+    const tagsInput = screen.getByLabelText(TAGS_LABEL)
+    await fireEvent.update(tagsInput, 'sobremesa')
+    await fireEvent.keyDown(tagsInput, { key: 'Enter' })
+    await fireEvent.update(tagsInput, 'chocolate')
+    await fireEvent.keyDown(tagsInput, { key: 'Enter' })
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Criar receita' }))
 
     expect(emitted().submit[0]).toEqual([
       {
         title: 'Bolo de Chocolate',
         ingredients: ['farinha', 'acucar', 'ovos'],
+        instructions: ['Misture os secos', 'Asse por 40 minutos'],
         tags: ['sobremesa', 'chocolate'],
         source_url: null,
       },
@@ -28,12 +42,12 @@ describe('RecipeForm', () => {
   it('emits a from-url payload when the import tab is used', async () => {
     const { emitted } = render(RecipeForm)
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Import from URL' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Importar de URL' }))
     await fireEvent.update(
-      screen.getByLabelText('Recipe URL'),
+      screen.getByLabelText('URL da Receita'),
       'https://www.tudogostoso.com.br/receita/1-bolo.html',
     )
-    await fireEvent.click(screen.getByRole('button', { name: 'Import recipe' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Importar receita' }))
 
     expect(emitted().submitFromUrl[0]).toEqual([
       {
@@ -59,8 +73,8 @@ describe('RecipeForm', () => {
       },
     })
 
-    expect(screen.queryByRole('button', { name: 'Import from URL' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Importar de URL' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Salvar alterações' })).toBeInTheDocument()
   })
 
   it('fills the fields from an already-loaded recipe at mount', () => {
@@ -71,6 +85,7 @@ describe('RecipeForm', () => {
           user_id: 1,
           title: 'Bolo',
           ingredients: ['farinha', 'acucar'],
+          instructions: ['Misture tudo'],
           tags: ['sobremesa'],
           source_url: null,
           created_at: '',
@@ -79,8 +94,10 @@ describe('RecipeForm', () => {
       },
     })
 
-    expect(screen.getByLabelText('Title')).toHaveValue('Bolo')
-    expect(screen.getByLabelText('Ingredients (one per line)')).toHaveValue('farinha\nacucar')
-    expect(screen.getByLabelText('Tags (comma separated)')).toHaveValue('sobremesa')
+    expect(screen.getByLabelText('Título')).toHaveValue('Bolo')
+    expect(screen.getByLabelText('Ingredientes (um por linha)')).toHaveValue('farinha\nacucar')
+    expect(screen.getByLabelText('Modo de Preparo (um passo por linha)')).toHaveValue('Misture tudo')
+    // The existing tag is rendered as a chip, not as the input's value.
+    expect(screen.getByText('sobremesa')).toBeInTheDocument()
   })
 })

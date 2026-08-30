@@ -27,6 +27,7 @@ const mode = ref<'manual' | 'url'>('manual')
 
 const title = ref(props.recipe?.title ?? '')
 const ingredientsText = ref(props.recipe?.ingredients.join('\n') ?? '')
+const instructionsText = ref(props.recipe?.instructions?.join('\n') ?? '')
 const sourceUrl = ref(props.recipe?.source_url ?? '')
 const importUrl = ref('')
 
@@ -69,6 +70,7 @@ function handleManualSubmit() {
   emit('submit', {
     title: title.value,
     ingredients: parseLines(ingredientsText.value),
+    instructions: parseLines(instructionsText.value),
     tags: tags.value,
     source_url: sourceUrl.value || null,
   })
@@ -131,6 +133,16 @@ const textareaClass = "flex min-h-[120px] w-full rounded-md border border-input 
             rows="6"
             :class="cn(textareaClass)"
             placeholder="2 xícaras de farinha&#10;1 xícara de açúcar&#10;..."
+          />
+        </div>
+        <div class="space-y-2">
+          <Label for="instructions">Modo de Preparo (um passo por linha)</Label>
+          <textarea
+            id="instructions"
+            v-model="instructionsText"
+            rows="6"
+            :class="cn(textareaClass)"
+            placeholder="Pré-aqueça o forno a 180°C&#10;Misture os ingredientes secos&#10;..."
           />
         </div>
         

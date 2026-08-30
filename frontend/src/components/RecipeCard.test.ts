@@ -35,7 +35,7 @@ describe('RecipeCard', () => {
     renderWithRouter(recipe)
 
     expect(screen.getByText('Bolo de Chocolate')).toBeInTheDocument()
-    expect(screen.getByText('3 ingredients')).toBeInTheDocument()
+    expect(screen.getByText('3 ingredientes')).toBeInTheDocument()
     expect(screen.getByText('sobremesa')).toBeInTheDocument()
     expect(screen.getByText('chocolate')).toBeInTheDocument()
   })

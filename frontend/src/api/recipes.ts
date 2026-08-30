@@ -2,6 +2,7 @@ import { apiClient } from '@/api/client'
 import type {
   FromUrlInput,
   PaginatedRecipes,
+  PaginationMeta,
   Recipe,
   RecipeFormInput,
   SearchInput,
@@ -45,9 +46,21 @@ export async function createRecipeFromUrl(input: FromUrlInput): Promise<Recipe> 
   return data.data
 }
 
+/**
+ * Raw shape of POST /recipes/search per specs/recipe-search.spec.md: pagination
+ * lives under `pagination` (not `meta`, which carries search timing/cache info).
+ * We normalize it to the same `{ data, meta }` shape the list endpoint returns
+ * so the store and pagination UI can treat both identically.
+ */
+interface SearchResponse {
+  data: Recipe[]
+  pagination: PaginationMeta
+  meta?: { search_time_ms: number; cache_hit: boolean }
+}
+
 export async function searchRecipes(input: SearchInput): Promise<PaginatedRecipes> {
-  const { data } = await apiClient.post<PaginatedRecipes>('/recipes/search', input)
-  return data
+  const { data } = await apiClient.post<SearchResponse>('/recipes/search', input)
+  return { data: data.data, meta: data.pagination }
 }
 
 export async function listTags(): Promise<TagCount[]> {

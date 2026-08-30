@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { watchDebounced } from '@vueuse/core'
 import { Search } from 'lucide-vue-next'
 
 import type { TagCount } from '@/types'
@@ -11,6 +12,14 @@ const emit = defineEmits<{ search: [query: string, tags: string[]] }>()
 
 const query = ref('')
 const selectedTags = ref<string[]>([])
+
+// Search-as-you-type: emit 300ms after the user stops typing, so the parent
+// re-queries without requiring a click on "Buscar".
+watchDebounced(
+  query,
+  () => emit('search', query.value, selectedTags.value),
+  { debounce: 300 },
+)
 
 function toggleTag(tag: string) {
   selectedTags.value = selectedTags.value.includes(tag)
