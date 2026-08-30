@@ -11,6 +11,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 abstract class ApiController extends Controller
 {
     /**
+     * @param  JsonResource|AnonymousResourceCollection|array<array-key, mixed>|null  $data
      * @param  array<string, mixed>  $meta
      */
     protected function success(JsonResource|AnonymousResourceCollection|array|null $data = null, ?string $message = null, array $meta = [], int $status = 200): JsonResponse
@@ -29,6 +30,7 @@ abstract class ApiController extends Controller
     }
 
     /**
+     * @param  LengthAwarePaginator<int, mixed>  $paginator
      * @param  array<string, mixed>  $meta
      */
     protected function paginated(LengthAwarePaginator $paginator, AnonymousResourceCollection $collection, array $meta = []): JsonResponse

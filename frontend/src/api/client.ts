@@ -30,7 +30,8 @@ apiClient.interceptors.response.use(
     if (error.response?.status !== 422) {
       const { useUiStore } = await import('@/stores/ui')
       const message =
-        (error.response?.data as ApiValidationError | undefined)?.message ?? 'Request failed. Try again.'
+        (error.response?.data as ApiValidationError | undefined)?.message ??
+        'Request failed. Try again.'
       useUiStore().notify(message, 'error')
     }
 

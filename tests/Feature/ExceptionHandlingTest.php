@@ -17,10 +17,12 @@ class ExceptionHandlingTest extends TestCase
 
         $response = $this->getJson('/api/_boom');
 
+        // The scrubbed 500 response carries the friendly message plus a
+        // meta.request_id (a dynamic UUID) for incident correlation, so match
+        // on the message and structure rather than an exact JSON body.
         $response->assertStatus(500)
-            ->assertExactJson([
-                'message' => 'Ocorreu um erro inesperado. Tente novamente em instantes.',
-            ]);
+            ->assertJsonPath('message', 'Ocorreu um erro inesperado. Tente novamente em instantes.')
+            ->assertJsonStructure(['message', 'meta' => ['request_id']]);
 
         // The raw internal detail must never reach the client.
         $this->assertStringNotContainsString('select *', $response->getContent());

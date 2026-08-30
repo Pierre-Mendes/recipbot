@@ -53,7 +53,8 @@ function clearFilters() {
     <p v-if="hasActiveFilters" class="mt-2 text-xs text-gray-500">
       Active filters:
       <span v-if="query.trim()">
-        query "<strong>{{ query.trim() }}</strong>"
+        query "<strong>{{ query.trim() }}</strong
+        >"
       </span>
       <span v-if="selectedTags.length">
         <span v-if="query.trim()"> + </span>{{ selectedTags.length }} tag(s)
