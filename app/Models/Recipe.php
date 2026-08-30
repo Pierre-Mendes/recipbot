@@ -64,20 +64,31 @@ class Recipe extends Model
                 'string',
                 'min:3',
                 'max:255',
-                function (string $attribute, mixed $value, \Closure $fail) {
-                    if (is_string($value) && trim($value) === '') {
-                        $fail('The '.$attribute.' cannot be only whitespace.');
-                    }
-                },
+                self::titleNotBlankRule(),
             ],
             'ingredients' => ['required', 'array', 'min:1', 'max:20'],
             'ingredients.*' => ['string', 'max:255'],
             'instructions' => ['nullable', 'array', 'max:50'],
             'instructions.*' => ['string', 'max:1000'],
             'tags' => ['array', 'max:10'],
-            'tags.*' => ['string', 'max:50', 'regex:/^[a-zA-Z0-9 -]+$/'],
+            'tags.*' => ['string', 'max:50', 'regex:/^[\p{L}\p{N} -]+$/u'],
             'source_url' => ['nullable', 'url', 'max:2048'],
         ];
+    }
+
+    /**
+     * Shared "title is not only whitespace" rule. A bare `min:3` counts spaces,
+     * so "   " would otherwise pass; this is the single source of that guard,
+     * reused by the store/update FormRequests so the API enforces what the
+     * model contract (and its test) declares.
+     */
+    public static function titleNotBlankRule(): \Closure
+    {
+        return function (string $attribute, mixed $value, \Closure $fail): void {
+            if (is_string($value) && trim($value) === '') {
+                $fail('The '.$attribute.' cannot be only whitespace.');
+            }
+        };
     }
 
     /**

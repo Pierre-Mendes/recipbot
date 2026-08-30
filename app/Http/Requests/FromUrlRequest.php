@@ -19,7 +19,9 @@ class FromUrlRequest extends FormRequest
         return [
             'url' => ['required', 'url', 'max:2048'],
             'tags' => ['nullable', 'array', 'max:10'],
-            'tags.*' => ['string', 'max:50', 'regex:/^[a-zA-Z0-9 -]+$/'],
+            // Unicode-aware: letters (incl. accents like "café"), numbers,
+            // spaces and hyphens - but no other punctuation.
+            'tags.*' => ['string', 'max:50', 'regex:/^[\p{L}\p{N} -]+$/u'],
         ];
     }
 
