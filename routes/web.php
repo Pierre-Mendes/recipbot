@@ -20,8 +20,13 @@ Route::prefix('docs')->group(function () {
     Route::get('/openapi.yaml', function () {
         abort_if(app()->isProduction(), 404);
 
-        return response()->file(base_path('docs/openapi.yaml'), [
-            'Content-Type' => 'application/yaml; charset=UTF-8',
-        ]);
+        $path = base_path('docs/openapi.yaml');
+        abort_unless(is_file($path), 404);
+
+        return response(
+            file_get_contents($path) ?: '',
+            200,
+            ['Content-Type' => 'application/yaml; charset=UTF-8']
+        );
     });
 });
