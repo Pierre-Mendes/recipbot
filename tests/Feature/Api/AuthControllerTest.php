@@ -140,8 +140,8 @@ class AuthControllerTest extends TestCase
         ]);
 
         $response->assertStatus(200)
-            ->assertJsonStructure(['access_token', 'token_type', 'expires_in'])
-            ->assertJson(['token_type' => 'Bearer']);
+            ->assertJsonStructure(['data' => ['access_token', 'token_type', 'expires_in']])
+            ->assertJsonPath('data.token_type', 'Bearer');
     }
 
     public function test_can_login_with_email_of_different_case(): void
@@ -157,7 +157,7 @@ class AuthControllerTest extends TestCase
         ]);
 
         $response->assertStatus(200)
-            ->assertJsonStructure(['access_token', 'token_type', 'expires_in']);
+            ->assertJsonStructure(['data' => ['access_token', 'token_type', 'expires_in']]);
     }
 
     public function test_cannot_login_with_wrong_password(): void

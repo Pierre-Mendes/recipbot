@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\ApiRequestContext;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -16,7 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        //
+        $middleware->append(ApiRequestContext::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // Never leak internal error details (SQL, stack traces, the user's
@@ -46,6 +47,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
             return response()->json([
                 'message' => 'Ocorreu um erro inesperado. Tente novamente em instantes.',
+                'meta' => [
+                    'request_id' => (string) $request->attributes->get('request_id', ''),
+                ],
             ], 500);
         });
     })->create();

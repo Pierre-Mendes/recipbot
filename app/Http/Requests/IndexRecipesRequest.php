@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class SearchRecipesRequest extends FormRequest
+class IndexRecipesRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -17,9 +17,6 @@ class SearchRecipesRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'tags' => ['nullable', 'array', 'max:10'],
-            'tags.*' => ['string', 'max:50'],
-            'query' => ['nullable', 'string', 'max:255'],
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:'.config('recipbot.pagination.recipes_max_per_page', 100)],
         ];

@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
+import { extractValidationErrors, firstValidationMessage } from '@/utils/errors'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -12,11 +13,17 @@ const email = ref('')
 const password = ref('')
 const passwordConfirmation = ref('')
 const success = ref(false)
+const fieldErrors = ref<Record<string, string[]>>({})
 
 async function handleSubmit() {
-  await auth.register(name.value, email.value, password.value, passwordConfirmation.value)
-  success.value = true
-  setTimeout(() => router.push({ name: 'login' }), 1200)
+  fieldErrors.value = {}
+  try {
+    await auth.register(name.value, email.value, password.value, passwordConfirmation.value)
+    success.value = true
+    setTimeout(() => router.push({ name: 'login' }), 1200)
+  } catch (e) {
+    fieldErrors.value = extractValidationErrors(e)
+  }
 }
 </script>
 
@@ -34,6 +41,9 @@ async function handleSubmit() {
           required
           class="mt-1 w-full rounded border border-gray-300 px-3 py-2"
         />
+        <p v-if="firstValidationMessage(fieldErrors, 'name')" class="mt-1 text-xs text-red-600">
+          {{ firstValidationMessage(fieldErrors, 'name') }}
+        </p>
       </div>
       <div>
         <label class="block text-sm font-medium text-gray-700" for="email">Email</label>
@@ -44,6 +54,9 @@ async function handleSubmit() {
           required
           class="mt-1 w-full rounded border border-gray-300 px-3 py-2"
         />
+        <p v-if="firstValidationMessage(fieldErrors, 'email')" class="mt-1 text-xs text-red-600">
+          {{ firstValidationMessage(fieldErrors, 'email') }}
+        </p>
       </div>
       <div>
         <label class="block text-sm font-medium text-gray-700" for="password">Password</label>
@@ -55,6 +68,9 @@ async function handleSubmit() {
           minlength="8"
           class="mt-1 w-full rounded border border-gray-300 px-3 py-2"
         />
+        <p v-if="firstValidationMessage(fieldErrors, 'password')" class="mt-1 text-xs text-red-600">
+          {{ firstValidationMessage(fieldErrors, 'password') }}
+        </p>
       </div>
       <div>
         <label class="block text-sm font-medium text-gray-700" for="password_confirmation"
@@ -67,6 +83,12 @@ async function handleSubmit() {
           required
           class="mt-1 w-full rounded border border-gray-300 px-3 py-2"
         />
+        <p
+          v-if="firstValidationMessage(fieldErrors, 'password_confirmation')"
+          class="mt-1 text-xs text-red-600"
+        >
+          {{ firstValidationMessage(fieldErrors, 'password_confirmation') }}
+        </p>
       </div>
       <p v-if="auth.error" class="text-sm text-red-600">{{ auth.error }}</p>
       <button

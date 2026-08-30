@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 import type { TagCount } from '@/types'
 
@@ -8,6 +8,8 @@ const emit = defineEmits<{ search: [query: string, tags: string[]] }>()
 
 const query = ref('')
 const selectedTags = ref<string[]>([])
+
+const hasActiveFilters = computed(() => query.value.trim() !== '' || selectedTags.value.length > 0)
 
 function toggleTag(tag: string) {
   selectedTags.value = selectedTags.value.includes(tag)
@@ -18,6 +20,12 @@ function toggleTag(tag: string) {
 
 function handleSubmit() {
   emit('search', query.value, selectedTags.value)
+}
+
+function clearFilters() {
+  query.value = ''
+  selectedTags.value = []
+  emit('search', '', [])
 }
 </script>
 
@@ -33,7 +41,25 @@ function handleSubmit() {
       <button type="submit" class="rounded bg-purple-600 px-4 py-2 text-sm text-white">
         Search
       </button>
+      <button
+        v-if="hasActiveFilters"
+        type="button"
+        class="rounded border border-gray-300 px-4 py-2 text-sm text-gray-700"
+        @click="clearFilters"
+      >
+        Clear
+      </button>
     </form>
+    <p v-if="hasActiveFilters" class="mt-2 text-xs text-gray-500">
+      Active filters:
+      <span v-if="query.trim()">
+        query "<strong>{{ query.trim() }}</strong
+        >"
+      </span>
+      <span v-if="selectedTags.length">
+        <span v-if="query.trim()"> + </span>{{ selectedTags.length }} tag(s)
+      </span>
+    </p>
     <div v-if="props.availableTags.length" class="mt-2 flex flex-wrap gap-1">
       <button
         v-for="tag in props.availableTags"

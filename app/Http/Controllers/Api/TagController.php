@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Requests\TagSuggestionsRequest;
 use App\Models\User;
 use App\Services\RecipeSearchService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
-class TagController
+class TagController extends ApiController
 {
     public function __construct(
         private readonly RecipeSearchService $search,
@@ -17,13 +17,17 @@ class TagController
      * Tag autocomplete suggestions for the authenticated user, per
      * specs/recipe-search.spec.md's GET /api/tags contract.
      */
-    public function suggestions(Request $request): JsonResponse
+    public function suggestions(TagSuggestionsRequest $request): JsonResponse
     {
         /** @var User $user */
         $user = $request->user();
 
-        $tags = $this->search->suggestTags($user, (string) $request->query('q', ''));
+        $tags = $this->search->suggestTags(
+            $user,
+            (string) $request->query('q', ''),
+            (int) $request->query('limit', config('recipbot.pagination.tags_default_limit', 10)),
+        );
 
-        return response()->json(['tags' => $tags]);
+        return $this->success($tags);
     }
 }

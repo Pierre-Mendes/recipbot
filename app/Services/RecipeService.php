@@ -2,16 +2,15 @@
 
 namespace App\Services;
 
+use App\Events\RecipeCreated;
+use App\Events\RecipeDeleted;
+use App\Events\RecipeUpdated;
 use App\Models\Recipe;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class RecipeService
 {
-    public function __construct(
-        private readonly RecipeSearchService $search,
-    ) {}
-
     /**
      * Create a new recipe owned by the given user.
      *
@@ -27,7 +26,7 @@ class RecipeService
             'source_url' => $data['source_url'] ?? null,
         ]);
 
-        $this->search->invalidate($user);
+        event(new RecipeCreated($recipe, $user));
 
         return $recipe;
     }
@@ -42,7 +41,7 @@ class RecipeService
         $recipe->update($data);
         $recipe->refresh();
 
-        $this->search->invalidate($this->ownerOf($recipe));
+        event(new RecipeUpdated($recipe, $this->ownerOf($recipe)));
 
         return $recipe;
     }
@@ -54,7 +53,7 @@ class RecipeService
     {
         $user = $this->ownerOf($recipe);
         $recipe->delete();
-        $this->search->invalidate($user);
+        event(new RecipeDeleted($recipe, $user));
     }
 
     /**

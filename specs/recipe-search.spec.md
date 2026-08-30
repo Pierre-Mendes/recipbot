@@ -80,13 +80,13 @@ US04: Users can search recipes by tags with high performance and optional full-t
       "created_at": "2024-08-27T10:30:00Z"
     }
   ],
-  "pagination": {
-    "total": 15,
-    "per_page": 20,
-    "current_page": 1,
-    "last_page": 1
-  },
   "meta": {
+    "pagination": {
+      "total": 15,
+      "per_page": 20,
+      "current_page": 1,
+      "last_page": 1
+    },
     "search_time_ms": 42,
     "cache_hit": false
   }
@@ -103,7 +103,7 @@ US04: Users can search recipes by tags with high performance and optional full-t
 **Response (200 OK)**:
 ```json
 {
-  "tags": [
+  "data": [
     { "name": "sobremesa", "count": 42 },
     { "name": "sopa", "count": 8 }
   ]

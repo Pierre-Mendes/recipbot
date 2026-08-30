@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Recipe;
 use Illuminate\Foundation\Http\FormRequest;
 
 class FromUrlRequest extends FormRequest
@@ -16,10 +17,12 @@ class FromUrlRequest extends FormRequest
      */
     public function rules(): array
     {
+        $rules = Recipe::createRules();
+
         return [
             'url' => ['required', 'url', 'max:2048'],
-            'tags' => ['nullable', 'array', 'max:10'],
-            'tags.*' => ['string', 'max:50', 'regex:/^[a-zA-Z0-9 -]+$/'],
+            'tags' => $rules['tags'],
+            'tags.*' => $rules['tags.*'],
         ];
     }
 

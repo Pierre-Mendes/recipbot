@@ -2,6 +2,11 @@
 
 Esta pasta contém **todos os arquivos prontos** para começar o desenvolvimento do RecipBot MVP.
 
+## Alinhamento de melhoria contínua
+
+- Escopo e metas de melhoria: `docs/IMPROVEMENT_SCOPE.md`
+- Runbook de promoção/rollback: `docs/DEPLOYMENT_RUNBOOK.md`
+
 ## 📁 Conteúdo
 
 ```

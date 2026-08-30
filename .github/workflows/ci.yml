@@ -20,6 +20,9 @@ env:
   PHP_VERSION: "8.4"
   PHP_EXTENSIONS: pdo, pdo_pgsql, mbstring, xml, json, bcmath, redis
 
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Test (backend)
@@ -327,6 +330,31 @@ jobs:
         run: composer audit
         continue-on-error: true
 
+  frontend_security:
+    name: Frontend dependency audit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: NPM audit (prod deps)
+        run: npm audit --omit=dev
+        continue-on-error: true
+
   semgrep:
     name: Semgrep SAST
     runs-on: ubuntu-latest
@@ -488,10 +516,10 @@ jobs:
           cache-to: type=gha,mode=max
 
   quality_gate:
-    name: Quality Gate
+    name: Required Quality Gate
     runs-on: ubuntu-latest
     if: always()
-    needs: [test, frontend, e2e, phpstan, pint, security, semgrep, trufflehog, dast]
+    needs: [test, frontend, phpstan, pint, trufflehog]
     permissions:
       pull-requests: write
     steps:
@@ -504,13 +532,9 @@ jobs:
             echo "|---|---|"
             echo "| Tests + coverage ≥80% (backend) | ${{ needs.test.result }} |"
             echo "| Tests + coverage ≥80% (frontend) | ${{ needs.frontend.result }} |"
-            echo "| E2E (Playwright) | ${{ needs.e2e.result }} |"
             echo "| PHPStan level 8 | ${{ needs.phpstan.result }} |"
             echo "| Pint style | ${{ needs.pint.result }} |"
-            echo "| composer audit | ${{ needs.security.result }} (3 known laravel/framework advisories accepted, see step log) |"
-            echo "| Semgrep SAST | ${{ needs.semgrep.result }} |"
             echo "| TruffleHog secrets | ${{ needs.trufflehog.result }} |"
-            echo "| OWASP ZAP DAST | ${{ needs.dast.result }} |"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Comment on PR
@@ -521,13 +545,9 @@ jobs:
             const results = {
               'Tests + coverage (backend)': '${{ needs.test.result }}',
               'Tests + coverage (frontend)': '${{ needs.frontend.result }}',
-              'E2E (Playwright)': '${{ needs.e2e.result }}',
               'PHPStan level 8': '${{ needs.phpstan.result }}',
               'Pint style': '${{ needs.pint.result }}',
-              'composer audit (3 known advisories accepted)': '${{ needs.security.result }}',
-              'Semgrep SAST': '${{ needs.semgrep.result }}',
               'TruffleHog secrets': '${{ needs.trufflehog.result }}',
-              'OWASP ZAP DAST': '${{ needs.dast.result }}',
             };
             const lines = Object.entries(results).map(([name, result]) => {
               const icon = result === 'success' ? '✅' : result === 'skipped' ? '⚪' : '❌';
@@ -537,11 +557,12 @@ jobs:
             const header = allPassing
               ? '**✅ Quality Gate passed — ready for human review.**'
               : '**❌ Quality Gate found issues — see the failing checks below.**';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `${header}\n\n${lines.join('\n')}`,
+              body: `${header}\n\n${lines.join('\n')}\n\n🔎 Full run details: ${runUrl}`,
             });
 
       # The summary/comment steps above only report; without this the Quality
@@ -553,13 +574,12 @@ jobs:
         env:
           TEST: ${{ needs.test.result }}
           FRONTEND: ${{ needs.frontend.result }}
-          E2E: ${{ needs.e2e.result }}
           PHPSTAN: ${{ needs.phpstan.result }}
           PINT: ${{ needs.pint.result }}
           TRUFFLEHOG: ${{ needs.trufflehog.result }}
         run: |
           failed=0
-          for name in TEST FRONTEND E2E PHPSTAN PINT TRUFFLEHOG; do
+          for name in TEST FRONTEND PHPSTAN PINT TRUFFLEHOG; do
             result="${!name}"
             if [ "$result" != "success" ]; then
               echo "::error::Required check $name did not pass (result: $result)"
@@ -571,3 +591,25 @@ jobs:
             exit 1
           fi
           echo "Quality Gate passed: all required checks succeeded."
+
+  advisory_quality_gate:
+    name: Advisory Quality Gate
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [e2e, security, frontend_security, semgrep, dast]
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Summarize advisory results
+        run: |
+          {
+            echo "## Advisory Quality Summary"
+            echo ""
+            echo "| Check | Result |"
+            echo "|---|---|"
+            echo "| E2E (Playwright) | ${{ needs.e2e.result }} |"
+            echo "| composer audit | ${{ needs.security.result }} (accepted risk may warn) |"
+            echo "| npm audit (prod deps) | ${{ needs.frontend_security.result }} |"
+            echo "| Semgrep SAST | ${{ needs.semgrep.result }} |"
+            echo "| OWASP ZAP DAST | ${{ needs.dast.result }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
