@@ -1,0 +1,9 @@
+# Generated / build output — not source, must not gate `prettier --check`.
+dist/
+coverage/
+playwright-report/
+blob-report/
+test-results/
+e2e/.auth/
+node_modules/
+package-lock.json

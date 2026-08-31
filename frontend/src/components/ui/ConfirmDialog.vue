@@ -16,15 +16,14 @@ const { isOpen, options, handleConfirm, handleCancel } = useConfirmDialog()
       leave-from-class="opacity-100"
       leave-to-class="opacity-0"
     >
-      <div
-        v-if="isOpen"
-        class="fixed inset-0 z-[90] flex items-center justify-center p-4"
-      >
+      <div v-if="isOpen" class="fixed inset-0 z-[90] flex items-center justify-center p-4">
         <!-- Backdrop -->
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="handleCancel" />
-        
+
         <!-- Dialog -->
-        <div class="relative bg-card rounded-xl border border-border shadow-2xl max-w-sm w-full animate-in fade-in zoom-in-95 duration-200">
+        <div
+          class="relative bg-card rounded-xl border border-border shadow-2xl max-w-sm w-full animate-in fade-in zoom-in-95 duration-200"
+        >
           <div class="p-6">
             <div class="flex items-center gap-3 mb-4">
               <div

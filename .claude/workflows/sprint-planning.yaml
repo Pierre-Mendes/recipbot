@@ -1,0 +1,335 @@
+name: Sprint Planning Workflow
+version: "1.0"
+description: "Complete sprint planning with documentation, visualization, and stakeholder updates"
+
+# Trigger patterns
+triggers:
+  - "analysis:"
+  - "plan:"
+  - "sprint-planning:"
+  - "sprint:"
+
+# Workflow definition
+workflow:
+  id: sprint-planning
+  name: "Sprint Planning with Complete Documentation"
+  description: "Full sprint planning cycle with requirement analysis, task breakdown, estimates, and stakeholder presentation"
+
+  # Sprint configuration
+  sprint:
+    duration_days: 14
+    velocity_target: "40-50 points" # Adjust based on team
+    capacity_hours: 160 # 2 people × 5 days × 8 hours (example)
+    start_date_template: "next-monday"
+
+  # Multi-stage orchestration
+  stages:
+    - name: "Requirements Discovery & Analysis"
+      agent: AnalysisAgent
+      timeout_minutes: 45
+      parallel_execution: false
+
+      tasks:
+        - name: "Interview for Hidden Requirements"
+          subagent: SpecParser
+          description: "Deep-dive interview to uncover edge cases and hidden requirements"
+          context_focus: "context-specs.md"
+          skills_to_use:
+            - grillme # Optional but recommended for requirement discovery
+          interview_questions:
+            - "What are the success criteria?"
+            - "What edge cases should we handle?"
+            - "Any performance constraints?"
+            - "Integration dependencies?"
+            - "Support/Operations concerns?"
+            - "Compliance/Security requirements?"
+          outputs:
+            - discovered-requirements.md
+            - edge-cases.md
+            - acceptance-criteria.xlsx
+
+        - name: "Extract & Clarify Specs"
+          subagent: SpecParser
+          description: "Parse and clarify all specification requirements"
+          context_focus: "context-specs.md"
+          skills_to_use:
+            - docx
+            - xlsx
+          outputs:
+            - requirements-document.docx
+            - acceptance-criteria.xlsx
+            - user-stories.xlsx
+
+        - name: "Architecture & Dependency Review"
+          subagent: BlockerAnalyzer
+          description: "Review system design and identify dependencies/risks"
+          context_focus: "context-architecture.md"
+          skills_to_use:
+            - artifact-diagramming
+            - xlsx
+          deliverables:
+            - architecture-diagram.svg
+            - dependency-graph.svg
+            - risk-register.xlsx
+            - blocker-analysis.xlsx
+
+      output_review:
+        - validate_requirements_complete: true
+        - check_dependencies_clear: true
+        - confirm_acceptance_criteria: true
+
+    - name: "Task Breakdown & Planning"
+      agent: AnalysisAgent
+      timeout_minutes: 90
+      depends_on: "Requirements Discovery & Analysis"
+      parallel_execution: false
+
+      tasks:
+        - name: "Decompose into Tasks"
+          subagent: TaskPlanner
+          description: "Break down features into granular, implementable tasks"
+          context_focus: "context-roadmap.md"
+          skills_to_use:
+            - xlsx
+            - pptx
+          decomposition_levels:
+            - "Epic → Feature → Story → Task"
+            - "Each task: 4-8 hours max"
+            - "Clear acceptance criteria per task"
+            - "Dependencies marked"
+          outputs:
+            - sprint-backlog.xlsx
+            - task-dependency-graph.svg
+            - sprint-plan.pptx
+
+        - name: "Estimation & Capacity Planning"
+          subagent: Estimator
+          description: "Estimate effort and align with team capacity"
+          context_focus: "definitions.md"
+          skills_to_use:
+            - xlsx
+          estimation_technique: "planning-poker"
+          capacity_factors:
+            - "Team members: {count}"
+            - "Available hours: {hours}"
+            - "Utilization factor: 0.75 (25% overhead)"
+            - "Vacation/Meetings: {hours}"
+          outputs:
+            - sprint-estimates.xlsx
+            - capacity-utilization.xlsx
+            - velocity-projection.xlsx
+            - risk-register-updated.xlsx
+
+        - name: "Create PRD & Documentation"
+          subagent: BlockerAnalyzer
+          description: "Generate formal Product Requirements Document"
+          context_focus: "context-specs.md"
+          skills_to_use:
+            - docx
+          prd_sections:
+            - "Executive Summary"
+            - "Business Objectives"
+            - "User Stories & Acceptance Criteria"
+            - "Architecture & Technical Approach"
+            - "Dependencies & Risks"
+            - "Timeline & Milestones"
+            - "Success Metrics"
+          outputs:
+            - sprint-prd.docx
+            - sprint-guidelines.md
+
+      planning_rules:
+        - "Always leave 10% buffer for unknowns"
+        - "High-risk items estimated higher"
+        - "Dependencies scheduled before dependents"
+        - "Testing included in estimates (not added separately)"
+
+    - name: "Visualization & Reporting"
+      agent: AnalysisAgent
+      timeout_minutes: 30
+      depends_on: "Task Breakdown & Planning"
+      parallel_execution: true
+
+      tasks:
+        - name: "Generate Velocity & Burndown Charts"
+          subagent: TaskPlanner
+          description: "Create sprint velocity and burndown visualizations"
+          skills_to_use:
+            - dataviz
+          charts_to_generate:
+            - velocity-history.png # Previous sprints
+            - burndown-forecast.png # Projected for this sprint
+            - sprint-velocity-trend.svg # 6-sprint trend
+            - capacity-utilization.png
+          outputs:
+            - burndown-chart.png
+            - velocity-chart.png
+            - capacity-chart.png
+
+        - name: "Generate Architecture Diagrams"
+          subagent: BlockerAnalyzer
+          description: "Create visual representations of architecture and data flows"
+          skills_to_use:
+            - artifact-diagramming
+          diagrams_to_create:
+            - system-architecture.svg
+            - data-flow-diagram.svg
+            - deployment-diagram.svg
+            - component-interaction-diagram.svg
+          outputs:
+            - architecture-diagrams.svg
+            - data-flow.svg
+            - deployment-plan.svg
+
+        - name: "Create Stakeholder Presentation"
+          subagent: TaskPlanner
+          description: "Generate comprehensive stakeholder presentation with context and plan"
+          skills_to_use:
+            - pptx
+          presentation_structure:
+            - Slide 1: "Sprint {number} Planning"
+            - Slide 2: "Business Context & Objectives"
+            - Slide 3: "Key Features & Deliverables"
+            - Slide 4: "Sprint Timeline & Milestones"
+            - Slide 5: "Architecture Overview"
+            - Slide 6: "Team & Capacity"
+            - Slide 7: "Risks & Mitigation"
+            - Slide 8: "Dependencies"
+            - Slide 9: "Success Metrics & KPIs"
+            - Slide 10: "Q&A"
+          outputs:
+            - sprint-presentation.pptx
+            - executive-summary.pdf
+
+  # Post-planning
+  post_processing:
+    - name: "Finalize & Distribute"
+      actions:
+        - export_sprint_backlog_to_jira: true
+        - email_stakeholders: true
+        - create_kickoff_event: true
+        - schedule_daily_standups: true
+        - setup_sprint_dashboard: true
+
+# Sprint metrics & tracking
+metrics:
+  planned_metrics:
+    - "Sprint velocity (story points)"
+    - "Estimated vs actual hours"
+    - "Task completion rate"
+    - "Blocker frequency"
+    - "On-time delivery percentage"
+
+  tracked_during_sprint:
+    - "Daily burndown progress"
+    - "Blocker count & resolution time"
+    - "Scope creep (if any)"
+    - "Team capacity utilization"
+    - "Test coverage change"
+
+  analyzed_post_sprint:
+    - "Sprint velocity trend"
+    - "Estimation accuracy"
+    - "Blocker patterns"
+    - "Team performance"
+    - "Process improvements"
+
+# Deliverables summary
+deliverables:
+  planning_documents:
+    - sprint-backlog.xlsx
+    - sprint-prd.docx
+    - sprint-guidelines.md
+    - risk-register.xlsx
+    - dependency-register.xlsx
+
+  requirements:
+    - requirements-document.docx
+    - user-stories.xlsx
+    - acceptance-criteria.xlsx
+    - edge-cases.md
+
+  visualizations:
+    - burndown-chart.png
+    - velocity-chart.png
+    - architecture-diagrams.svg
+    - data-flow.svg
+    - dependency-graph.svg
+    - capacity-utilization.png
+
+  stakeholder_docs:
+    - sprint-presentation.pptx
+    - executive-summary.pdf
+    - sprint-announcement.md
+
+  estimation:
+    - sprint-estimates.xlsx
+    - velocity-projection.xlsx
+    - capacity-utilization.xlsx
+
+  team_coordination:
+    - task-dependency-graph.svg
+    - team-assignment.xlsx
+    - schedule.xlsx
+    - standups.ics
+
+# Configuration
+configuration:
+  sprint_duration_days: 14
+  planning_meeting_hours: 4
+  daily_standup_minutes: 15
+  retrospective_hours: 2
+  buffer_percentage: 10
+
+  team_capacity:
+    total_team_members: 2
+    hours_per_person: 40
+    utilization_factor: 0.75
+    available_hours_per_sprint: 60 # 2 × 40 × 0.75
+
+  velocity_calculation:
+    include_sprints: 6 # Last 6 sprints
+    exclude_anomalies: true
+    confidence_level: "85%" # Show range
+
+# Quality gates for planning
+quality_gates:
+  - "All requirements documented"
+  - "Acceptance criteria clear"
+  - "Effort estimated"
+  - "Risks identified"
+  - "Dependencies mapped"
+  - "Resources allocated"
+  - "Team agrees on commitment"
+
+# Notifications & Communication
+notifications:
+  planning_started: "📋 Sprint {sprint_number} planning started"
+  analysis_complete: "✅ Requirements analysis complete: {requirement_count} items"
+  planning_complete: "🎯 Sprint {sprint_number} planning complete - {task_count} tasks, {estimated_points} story points"
+  ready_for_kickoff: "🚀 Sprint {sprint_number} ready for kickoff! Presentation ready."
+  stakeholder_update: "📊 Stakeholders notified with sprint plan and presentation"
+
+# Integration with external systems
+integration:
+  jira_export: true
+  slack_notification: true
+  calendar_events: true
+  google_docs_export: true
+  teams_presentation: true
+
+# Environment
+environment:
+  php_version: "8.5"
+  node_version: "20"
+  database: "postgresql-16"
+  cache: "redis-7"
+
+# Sprint retrospective template (for next sprint)
+retrospective_template:
+  sections:
+    - "What went well?"
+    - "What could be improved?"
+    - "Action items for next sprint"
+    - "Velocity trend analysis"
+    - "Team feedback"

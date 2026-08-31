@@ -96,7 +96,9 @@ describe('RecipeForm', () => {
 
     expect(screen.getByLabelText('Título')).toHaveValue('Bolo')
     expect(screen.getByLabelText('Ingredientes (um por linha)')).toHaveValue('farinha\nacucar')
-    expect(screen.getByLabelText('Modo de Preparo (um passo por linha)')).toHaveValue('Misture tudo')
+    expect(screen.getByLabelText('Modo de Preparo (um passo por linha)')).toHaveValue(
+      'Misture tudo',
+    )
     // The existing tag is rendered as a chip, not as the input's value.
     expect(screen.getByText('sobremesa')).toBeInTheDocument()
   })

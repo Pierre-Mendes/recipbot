@@ -27,7 +27,7 @@ class TagControllerTest extends TestCase
         $response = $this->actingAs($this->user, 'api')->getJson('/api/tags');
 
         $response->assertStatus(200);
-        $tags = collect($response->json('tags'))->keyBy('name');
+        $tags = collect($response->json('data'))->keyBy('name');
 
         $this->assertSame(3, $tags['sobremesa']['count']);
         $this->assertSame(3, $tags['facil']['count']);
@@ -43,7 +43,7 @@ class TagControllerTest extends TestCase
         $response = $this->actingAs($this->user, 'api')->getJson('/api/tags?q=sob');
 
         $response->assertStatus(200);
-        $names = collect($response->json('tags'))->pluck('name')->all();
+        $names = collect($response->json('data'))->pluck('name')->all();
 
         $this->assertSame(['sobremesa'], $names);
     }
@@ -55,7 +55,7 @@ class TagControllerTest extends TestCase
 
         $response = $this->actingAs($this->user, 'api')->getJson('/api/tags');
 
-        $response->assertStatus(200)->assertJsonCount(0, 'tags');
+        $response->assertStatus(200)->assertJsonCount(0, 'data');
     }
 
     public function test_unauthenticated_cannot_fetch_suggestions(): void
@@ -63,5 +63,13 @@ class TagControllerTest extends TestCase
         $response = $this->getJson('/api/tags');
 
         $response->assertStatus(401);
+    }
+
+    public function test_rejects_out_of_range_limit(): void
+    {
+        $response = $this->actingAs($this->user, 'api')
+            ->getJson('/api/tags?limit=999');
+
+        $response->assertStatus(422)->assertJsonValidationErrors(['limit']);
     }
 }

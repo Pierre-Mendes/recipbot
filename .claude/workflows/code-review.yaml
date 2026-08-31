@@ -1,0 +1,264 @@
+name: Code Review Workflow
+version: "1.0"
+description: "Comprehensive code review with formal exports and issue tracking"
+
+# Trigger patterns
+triggers:
+  - "review:"
+  - "audit:"
+  - "pr-review:"
+
+# Workflow definition
+workflow:
+  id: code-review
+  name: "Automated Code Review with Skills"
+  description: "Comprehensive code review validating security, quality, performance, and test coverage"
+
+  # Single-stage orchestration (ReviewAgent handles all)
+  stages:
+    - name: "Quality Assurance & Security"
+      agent: ReviewAgent
+      timeout_minutes: 60
+      parallel_execution: true
+
+      tasks:
+        - name: "Security Audit (OWASP Top 10)"
+          subagent: SecurityAuditor
+          description: "Validate OWASP Top 10 controls and security best practices"
+          context_focus: "context-security.md"
+          skills_to_use:
+            - recipbot-code-reviewer
+            - pdf
+            - to-issues
+
+          validation_checks:
+            - "A01 Broken Access Control"
+            - "A02 Cryptographic Failures"
+            - "A03 Injection"
+            - "A04 Insecure Design"
+            - "A05 Security Misconfiguration"
+            - "A06 Vulnerable Dependencies"
+            - "A07 Authentication Failures"
+            - "A08 Data Integrity Failures"
+            - "A09 Logging & Monitoring"
+            - "A10 SSRF Protection"
+
+          outputs:
+            - security-audit-report.pdf
+            - security-findings.xlsx
+            - github-issues (P0 critical findings)
+
+        - name: "Performance Review"
+          subagent: PerformanceReviewer
+          description: "Validate performance SLAs and identify bottlenecks"
+          context_focus: "context-performance.md"
+          skills_to_use:
+            - recipbot-code-reviewer
+            - dataviz
+            - xlsx
+
+          performance_slas:
+            - "API response: <200ms (p99)"
+            - "Frontend render: <3s (initial load)"
+            - "Database queries: <100ms (p95)"
+            - "Redis operations: <10ms (p99)"
+            - "Memory usage: <256MB per request"
+
+          outputs:
+            - performance-report.xlsx
+            - performance-comparison.png
+            - bottleneck-analysis.xlsx
+            - github-issues (P1 performance violations)
+
+        - name: "Code Quality & Style"
+          subagent: CodeStyleChecker
+          description: "Validate code quality, linting, and Laravel/Vue patterns"
+          context_focus: "context-quality.md"
+          skills_to_use:
+            - recipbot-code-reviewer
+
+          quality_standards:
+            - "PHPStan level 8"
+            - "ESLint strict"
+            - "Prettier formatting"
+            - "Laravel conventions"
+            - "Vue 3 patterns"
+            - "TypeScript strict mode"
+
+          outputs:
+            - quality-report.xlsx
+            - pattern-violations.pdf
+
+        - name: "Test Coverage Analysis"
+          subagent: TestCoverageAnalyzer
+          description: "Comprehensive test quality and coverage validation"
+          context_focus: "definitions.md"
+          skills_to_use:
+            - test-reviewer
+            - xlsx
+            - dataviz
+
+          coverage_targets:
+            - "Backend: ≥80%"
+            - "Frontend: ≥70%"
+            - "Critical paths: 100%"
+            - "Edge cases covered: yes"
+            - "Integration tests: yes"
+            - "E2E tests: yes"
+
+          test_quality_checks:
+            - "Clear test names (describe what, not how)"
+            - "Proper setup/teardown"
+            - "No hardcoded values"
+            - "Proper assertions"
+            - "Mock external dependencies"
+
+          outputs:
+            - coverage-metrics.xlsx
+            - coverage-trend.png
+            - test-quality-report.pdf
+            - edge-case-gaps.xlsx
+
+      # Parallel execution optimization
+      execution_strategy: "parallel"
+      max_parallel_tasks: 4
+
+      # Results aggregation
+      aggregation:
+        summary_report: true
+        combined_metrics: true
+        priority_ranking: true
+
+  # Post-review actions
+  post_processing:
+    - name: "Generate PR Comment"
+      description: "Auto-post comprehensive findings to PR"
+      skills_to_use: []
+      actions:
+        - create_pr_comment: true
+        - attach_security_report: true
+        - attach_metrics: true
+        - link_issues: true
+        - suggest_improvements: true
+
+    - name: "Create GitHub Issues"
+      description: "Auto-create issues for findings (P0/P1)"
+      skills_to_use:
+        - to-issues
+      severity_thresholds:
+        - "P0 (Critical): All findings"
+        - "P1 (High): Performance/Coverage violations"
+        - "P2 (Medium): Code quality"
+        - "P3 (Low): Style preferences"
+
+    - name: "Archive Artifacts"
+      description: "Store reports for historical analysis"
+      artifacts_to_archive:
+        - security-audit-report.pdf
+        - performance-report.xlsx
+        - coverage-metrics.xlsx
+        - quality-report.xlsx
+      retention_days: 90
+
+# Review verdict
+verdict:
+  passed_conditions:
+    - no_critical_security_findings: true
+    - no_performance_sla_violations: true
+    - code_quality_meets_standards: true
+    - test_coverage_target_met: true
+
+  verdict_options:
+    - "✅ APPROVE" # All conditions met
+    - "⚠️ APPROVE_WITH_WARNINGS" # P2/P3 findings only
+    - "❌ REQUEST_CHANGES" # P1 findings need fixing
+    - "🚫 BLOCK_MERGE" # P0 critical findings
+
+# Notification template
+notifications:
+  on_start: "🔍 Starting comprehensive code review of PR #{pr_number}"
+
+  on_security_complete: "🔐 Security audit complete: {critical_count} critical, {high_count} high findings"
+
+  on_performance_complete: "⚡ Performance review complete: {violations_count} SLA violations detected"
+
+  on_coverage_complete: "📊 Coverage analysis: Backend {backend_coverage}%, Frontend {frontend_coverage}%"
+
+  on_completion: "
+✅ Code Review Summary
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔐 Security: {security_verdict}
+⚡ Performance: {performance_verdict}
+📝 Code Quality: {quality_verdict}
+📊 Test Coverage: {coverage_verdict}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 Overall: {overall_verdict}
+📎 Artifacts: {artifact_count} files generated
+💬 Issues: {issue_count} created
+  "
+
+# Deliverables
+deliverables:
+  reports:
+    - security-audit-report.pdf
+    - performance-report.xlsx
+    - quality-report.xlsx
+    - coverage-metrics.xlsx
+
+  visualizations:
+    - performance-comparison.png
+    - coverage-trend.png
+    - findings-heatmap.svg
+
+  analysis:
+    - security-findings.xlsx
+    - bottleneck-analysis.xlsx
+    - edge-case-gaps.xlsx
+    - pattern-violations.pdf
+
+  automation:
+    - github-issues (P0/P1 findings)
+    - pr-comment (summary)
+    - branch-protection-check
+
+# Time estimates
+timing:
+  security_audit: "15-20 minutes"
+  performance_review: "10-15 minutes"
+  code_quality: "10-15 minutes"
+  coverage_analysis: "15-20 minutes"
+  reporting: "5 minutes"
+  total_estimated: "60 minutes"
+
+# Comparison mode (optional)
+comparison:
+  enabled: true
+  compare_with: "main"
+  metrics_to_track:
+    - coverage_delta
+    - performance_delta
+    - issue_count_delta
+    - complexity_delta
+  generate_trend_chart: true
+
+# Environment
+environment:
+  php_version: "8.5"
+  node_version: "20"
+  database: "postgresql-16"
+  cache: "redis-7"
+
+# Failure handling
+on_failure:
+  - log_error: true
+  - notify_team: true
+  - suggest_manual_review: true
+  - create_debug_info: true
+
+# Caching for performance
+caching:
+  vendor_cache: true
+  npm_cache: true
+  phpstan_cache: true
+  eslint_cache: true
+  ttl_hours: 24

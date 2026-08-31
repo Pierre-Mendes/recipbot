@@ -24,9 +24,7 @@ const ingredientLabel = computed(() => {
   return `${n} ${n === 1 ? 'ingrediente' : 'ingredientes'}`
 })
 
-const ingredientPreview = computed(() =>
-  props.recipe.ingredients.slice(0, 3).join(', '),
-)
+const ingredientPreview = computed(() => props.recipe.ingredients.slice(0, 3).join(', '))
 
 const createdLabel = computed(() => relativeTime(props.recipe.created_at))
 </script>
@@ -46,7 +44,9 @@ const createdLabel = computed(() => relativeTime(props.recipe.created_at))
       </div>
       <CardContent class="flex-1 min-w-0 py-4">
         <div class="flex items-start justify-between gap-2">
-          <h3 class="font-semibold text-base text-foreground truncate group-hover:text-primary transition-colors">
+          <h3
+            class="font-semibold text-base text-foreground truncate group-hover:text-primary transition-colors"
+          >
             {{ recipe.title }}
           </h3>
           <LinkIcon
@@ -92,7 +92,9 @@ const createdLabel = computed(() => relativeTime(props.recipe.created_at))
         class="h-32 flex items-center justify-center relative overflow-hidden"
         :style="{ background: gradient }"
       >
-        <Utensils class="h-10 w-10 text-white/80 drop-shadow-sm transition-transform duration-300 group-hover:scale-110" />
+        <Utensils
+          class="h-10 w-10 text-white/80 drop-shadow-sm transition-transform duration-300 group-hover:scale-110"
+        />
         <div class="absolute inset-0 bg-gradient-to-t from-black/25 to-transparent"></div>
         <span
           v-if="recipe.source_url"

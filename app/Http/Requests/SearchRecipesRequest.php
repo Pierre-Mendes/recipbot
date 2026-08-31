@@ -21,7 +21,7 @@ class SearchRecipesRequest extends FormRequest
             'tags.*' => ['string', 'max:50'],
             'query' => ['nullable', 'string', 'max:255'],
             'page' => ['nullable', 'integer', 'min:1'],
-            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:'.config('recipbot.pagination.recipes_max_per_page', 100)],
         ];
     }
 }

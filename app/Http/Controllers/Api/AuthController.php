@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
+use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -12,7 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use PHPOpenSourceSaver\JWTAuth\JWTGuard;
 
-class AuthController
+class AuthController extends ApiController
 {
     /**
      * Postgres SQLSTATE for a unique constraint violation.
@@ -41,10 +42,7 @@ class AuthController
             throw $e;
         }
 
-        return response()->json([
-            'data' => $user,
-            'message' => 'Registration successful, please log in',
-        ], 201);
+        return $this->success(new UserResource($user), 'Registration successful, please log in', status: 201);
     }
 
     /**
@@ -91,7 +89,7 @@ class AuthController
 
         $this->jwtGuard()->logout();
 
-        return response()->json(['message' => 'Logged out successfully']);
+        return $this->success(null, 'Logged out successfully');
     }
 
     /**
@@ -99,12 +97,12 @@ class AuthController
      */
     public function me(Request $request): JsonResponse
     {
-        return response()->json(['data' => $request->user()]);
+        return $this->success(new UserResource($request->user()));
     }
 
     private function respondWithToken(string $token): JsonResponse
     {
-        return response()->json([
+        return $this->success([
             'access_token' => $token,
             'token_type' => 'Bearer',
             'expires_in' => $this->jwtGuard()->factory()->getTTL() * 60,

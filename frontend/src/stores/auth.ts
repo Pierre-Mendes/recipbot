@@ -27,6 +27,10 @@ export const useAuthStore = defineStore('auth', () => {
       isAuthenticated.value = true
       await fetchCurrentUser()
     } catch (e) {
+      // If login stored a token but a later step (e.g. fetchCurrentUser) failed,
+      // drop the half-established session so guards and the navbar don't treat
+      // the user as authenticated while the login page reports failure.
+      clearSession()
       error.value = extractErrorMessage(e, 'Invalid credentials')
       throw e
     } finally {

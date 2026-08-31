@@ -19,7 +19,9 @@ const variantClasses = {
 
 <template>
   <Teleport to="body">
-    <div class="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 max-w-sm w-full pointer-events-none">
+    <div
+      class="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 max-w-sm w-full pointer-events-none"
+    >
       <TransitionGroup
         enter-active-class="transition-all duration-300 ease-out"
         leave-active-class="transition-all duration-200 ease-in"
@@ -40,8 +42,8 @@ const variantClasses = {
           <component :is="icons[toast.variant]" class="h-5 w-5 mt-0.5 shrink-0" />
           <p class="text-sm font-medium flex-1">{{ toast.message }}</p>
           <button
-            @click="removeToast(toast.id)"
             class="shrink-0 rounded-full p-0.5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+            @click="removeToast(toast.id)"
           >
             <X class="h-4 w-4" />
           </button>

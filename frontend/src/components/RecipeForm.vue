@@ -66,7 +66,7 @@ function parseLines(text: string): string[] {
 function handleManualSubmit() {
   // force add any pending tag before submit
   if (tagInput.value) addTag()
-  
+
   emit('submit', {
     title: title.value,
     ingredients: parseLines(ingredientsText.value),
@@ -78,14 +78,15 @@ function handleManualSubmit() {
 
 function handleUrlSubmit() {
   if (tagInput.value) addTag()
-  
+
   emit('submitFromUrl', {
     url: importUrl.value,
     tags: tags.value,
   })
 }
 
-const textareaClass = "flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-shadow"
+const textareaClass =
+  'flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-shadow'
 </script>
 
 <template>
@@ -94,7 +95,11 @@ const textareaClass = "flex min-h-[120px] w-full rounded-md border border-input 
       <button
         type="button"
         class="flex flex-1 items-center justify-center gap-2 py-4 text-sm font-medium transition-colors"
-        :class="mode === 'manual' ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'"
+        :class="
+          mode === 'manual'
+            ? 'border-b-2 border-primary text-primary'
+            : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
+        "
         @click="mode = 'manual'"
       >
         <PenLine class="h-4 w-4" />
@@ -103,7 +108,11 @@ const textareaClass = "flex min-h-[120px] w-full rounded-md border border-input 
       <button
         type="button"
         class="flex flex-1 items-center justify-center gap-2 py-4 text-sm font-medium transition-colors"
-        :class="mode === 'url' ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'"
+        :class="
+          mode === 'url'
+            ? 'border-b-2 border-primary text-primary'
+            : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
+        "
         @click="mode = 'url'"
       >
         <LinkIcon class="h-4 w-4" />
@@ -145,21 +154,23 @@ const textareaClass = "flex min-h-[120px] w-full rounded-md border border-input 
             placeholder="Pré-aqueça o forno a 180°C&#10;Misture os ingredientes secos&#10;..."
           />
         </div>
-        
+
         <!-- Tags Input -->
         <div class="space-y-2">
           <Label for="tags">Tags (pressione vírgula ou Enter para adicionar)</Label>
-          <div class="flex flex-wrap items-center gap-2 p-2 rounded-md border border-input bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 min-h-[44px] transition-shadow">
+          <div
+            class="flex flex-wrap items-center gap-2 p-2 rounded-md border border-input bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 min-h-[44px] transition-shadow"
+          >
             <span
               v-for="(tag, index) in tags"
-              :key="index"
+              :key="tag"
               class="inline-flex items-center gap-1 rounded-full bg-primary/15 text-primary px-2.5 py-1 text-sm font-medium animate-in zoom-in duration-200"
             >
               {{ tag }}
               <button
                 type="button"
-                @click="removeTag(index)"
                 class="hover:bg-primary/20 rounded-full p-0.5 transition-colors focus:outline-none"
+                @click="removeTag(index)"
               >
                 <X class="h-3 w-3" />
               </button>
@@ -167,21 +178,17 @@ const textareaClass = "flex min-h-[120px] w-full rounded-md border border-input 
             <input
               id="tags"
               v-model="tagInput"
-              @keydown="handleTagInput"
-              @blur="addTag"
               type="text"
               class="flex-1 bg-transparent min-w-[120px] outline-none text-sm placeholder:text-muted-foreground"
               placeholder="Adicionar tag..."
+              @keydown="handleTagInput"
+              @blur="addTag"
             />
           </div>
         </div>
-        
+
         <div class="pt-2">
-          <Button
-            type="submit"
-            :disabled="props.loading"
-            class="w-full sm:w-auto"
-          >
+          <Button type="submit" :disabled="props.loading" class="w-full sm:w-auto">
             <Loader2 v-if="props.loading" class="mr-2 h-4 w-4 animate-spin" />
             <Save v-else class="mr-2 h-4 w-4" />
             {{ props.recipe ? 'Salvar alterações' : 'Criar receita' }}
@@ -193,7 +200,9 @@ const textareaClass = "flex min-h-[120px] w-full rounded-md border border-input 
         <div class="space-y-2">
           <Label for="url">URL da Receita</Label>
           <div class="relative">
-            <LinkIcon class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <LinkIcon
+              class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            />
             <Input
               id="url"
               v-model="importUrl"
@@ -208,21 +217,23 @@ const textareaClass = "flex min-h-[120px] w-full rounded-md border border-input 
             Suporta tudogostoso.com.br, cybercook.com.br, e receitas.globo.com
           </p>
         </div>
-        
+
         <!-- Tags Input for URL -->
         <div class="space-y-2">
           <Label for="import-tags">Tags (pressione vírgula ou Enter para adicionar)</Label>
-          <div class="flex flex-wrap items-center gap-2 p-2 rounded-md border border-input bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 min-h-[44px] transition-shadow">
+          <div
+            class="flex flex-wrap items-center gap-2 p-2 rounded-md border border-input bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 min-h-[44px] transition-shadow"
+          >
             <span
               v-for="(tag, index) in tags"
-              :key="index"
+              :key="tag"
               class="inline-flex items-center gap-1 rounded-full bg-primary/15 text-primary px-2.5 py-1 text-sm font-medium animate-in zoom-in duration-200"
             >
               {{ tag }}
               <button
                 type="button"
-                @click="removeTag(index)"
                 class="hover:bg-primary/20 rounded-full p-0.5 transition-colors focus:outline-none"
+                @click="removeTag(index)"
               >
                 <X class="h-3 w-3" />
               </button>
@@ -230,21 +241,17 @@ const textareaClass = "flex min-h-[120px] w-full rounded-md border border-input 
             <input
               id="import-tags"
               v-model="tagInput"
-              @keydown="handleTagInput"
-              @blur="addTag"
               type="text"
               class="flex-1 bg-transparent min-w-[120px] outline-none text-sm placeholder:text-muted-foreground"
               placeholder="Adicionar tag..."
+              @keydown="handleTagInput"
+              @blur="addTag"
             />
           </div>
         </div>
-        
+
         <div class="pt-2">
-          <Button
-            type="submit"
-            :disabled="props.loading"
-            class="w-full sm:w-auto"
-          >
+          <Button type="submit" :disabled="props.loading" class="w-full sm:w-auto">
             <Loader2 v-if="props.loading" class="mr-2 h-4 w-4 animate-spin" />
             <DownloadCloud v-else class="mr-2 h-4 w-4" />
             Importar receita

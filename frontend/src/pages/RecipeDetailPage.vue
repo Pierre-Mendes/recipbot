@@ -90,16 +90,26 @@ function goBack() {
     </div>
   </div>
 
-  <div v-else-if="notFound" class="flex flex-col items-center justify-center py-20 text-center animate-in fade-in">
+  <div
+    v-else-if="notFound"
+    class="flex flex-col items-center justify-center py-20 text-center animate-in fade-in"
+  >
     <ChefHat class="h-16 w-16 text-muted-foreground/30 mb-4" />
     <h2 class="text-2xl font-semibold mb-2">Receita não encontrada</h2>
-    <p class="text-muted-foreground mb-6">A receita que você está procurando não existe ou foi removida.</p>
+    <p class="text-muted-foreground mb-6">
+      A receita que você está procurando não existe ou foi removida.
+    </p>
     <Button @click="goBack">Voltar para receitas</Button>
   </div>
 
   <div v-else-if="recipe" class="animate-in fade-in slide-in-from-bottom-4 duration-500">
     <!-- Botão Voltar -->
-    <Button variant="ghost" size="sm" @click="goBack" class="mb-6 -ml-3 text-muted-foreground hover:text-foreground">
+    <Button
+      variant="ghost"
+      size="sm"
+      class="mb-6 -ml-3 text-muted-foreground hover:text-foreground"
+      @click="goBack"
+    >
       <ArrowLeft class="mr-2 h-4 w-4" />
       Voltar
     </Button>
@@ -107,7 +117,9 @@ function goBack() {
     <!-- Hero Section -->
     <div class="mb-8">
       <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
-        <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">{{ recipe.title }}</h1>
+        <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+          {{ recipe.title }}
+        </h1>
         <div class="flex gap-2 shrink-0">
           <RouterLink :to="{ name: 'recipe-edit', params: { id: recipe.id } }">
             <Button variant="outline" size="sm">
@@ -144,7 +156,9 @@ function goBack() {
             </h2>
             <ul class="space-y-3">
               <li v-for="(ingredient, i) in recipe.ingredients" :key="i" class="flex items-start">
-                <div class="mr-3 mt-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary/20 text-primary">
+                <div
+                  class="mr-3 mt-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary/20 text-primary"
+                >
                   <span class="h-1.5 w-1.5 rounded-full bg-primary"></span>
                 </div>
                 <span class="text-sm text-card-foreground leading-tight">{{ ingredient }}</span>
@@ -171,9 +185,13 @@ function goBack() {
           <CardContent class="p-6 sm:p-8">
             <h2 class="text-xl font-semibold text-foreground mb-6">Modo de Preparo</h2>
             <template v-if="recipe.instructions?.length">
-              <ol class="space-y-8 relative before:absolute before:inset-y-0 before:left-[15px] before:w-0.5 before:bg-border/50 pl-0">
+              <ol
+                class="space-y-8 relative before:absolute before:inset-y-0 before:left-[15px] before:w-0.5 before:bg-border/50 pl-0"
+              >
                 <li v-for="(step, i) in recipe.instructions" :key="i" class="relative pl-10">
-                  <div class="absolute left-0 flex h-8 w-8 items-center justify-center rounded-full bg-background border-2 border-primary text-primary font-bold text-sm shadow-sm">
+                  <div
+                    class="absolute left-0 flex h-8 w-8 items-center justify-center rounded-full bg-background border-2 border-primary text-primary font-bold text-sm shadow-sm"
+                  >
                     {{ i + 1 }}
                   </div>
                   <p class="text-foreground leading-relaxed pt-1">{{ step }}</p>

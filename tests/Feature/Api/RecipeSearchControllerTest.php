@@ -28,7 +28,7 @@ class RecipeSearchControllerTest extends TestCase
             ->postJson('/api/recipes/search', ['tags' => ['sobremesa']]);
 
         $response->assertStatus(200);
-        $this->assertSame(3, $response->json('pagination.total'));
+        $this->assertSame(3, $response->json('meta.pagination.total'));
     }
 
     public function test_searches_by_multiple_tags_requires_all(): void
@@ -40,7 +40,7 @@ class RecipeSearchControllerTest extends TestCase
             ->postJson('/api/recipes/search', ['tags' => ['sobremesa', 'chocolate']]);
 
         $response->assertStatus(200);
-        $this->assertSame(1, $response->json('pagination.total'));
+        $this->assertSame(1, $response->json('meta.pagination.total'));
     }
 
     public function test_full_text_search_matches_title_and_ingredients(): void
@@ -62,7 +62,7 @@ class RecipeSearchControllerTest extends TestCase
             ->postJson('/api/recipes/search', ['query' => 'chocolate']);
 
         $response->assertStatus(200);
-        $this->assertSame(2, $response->json('pagination.total'));
+        $this->assertSame(2, $response->json('meta.pagination.total'));
     }
 
     public function test_combines_tag_and_query_filters(): void
@@ -80,7 +80,7 @@ class RecipeSearchControllerTest extends TestCase
             ->postJson('/api/recipes/search', ['tags' => ['sobremesa'], 'query' => 'chocolate']);
 
         $response->assertStatus(200);
-        $this->assertSame(1, $response->json('pagination.total'));
+        $this->assertSame(1, $response->json('meta.pagination.total'));
     }
 
     public function test_returns_empty_data_for_no_matches_without_erroring(): void
@@ -90,7 +90,7 @@ class RecipeSearchControllerTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonCount(0, 'data');
-        $this->assertSame(0, $response->json('pagination.total'));
+        $this->assertSame(0, $response->json('meta.pagination.total'));
     }
 
     public function test_only_searches_the_authenticated_users_recipes(): void
@@ -102,7 +102,7 @@ class RecipeSearchControllerTest extends TestCase
             ->postJson('/api/recipes/search', ['tags' => ['sobremesa']]);
 
         $response->assertStatus(200);
-        $this->assertSame(0, $response->json('pagination.total'));
+        $this->assertSame(0, $response->json('meta.pagination.total'));
     }
 
     public function test_results_are_paginated(): void
@@ -113,8 +113,8 @@ class RecipeSearchControllerTest extends TestCase
             ->postJson('/api/recipes/search', ['tags' => ['sobremesa'], 'per_page' => 20]);
 
         $response->assertStatus(200);
-        $this->assertSame(25, $response->json('pagination.total'));
-        $this->assertSame(2, $response->json('pagination.last_page'));
+        $this->assertSame(25, $response->json('meta.pagination.total'));
+        $this->assertSame(2, $response->json('meta.pagination.last_page'));
         $this->assertCount(20, $response->json('data'));
     }
 
@@ -139,7 +139,7 @@ class RecipeSearchControllerTest extends TestCase
 
         $before = $this->actingAs($this->user, 'api')
             ->postJson('/api/recipes/search', ['tags' => ['sobremesa']]);
-        $this->assertSame(1, $before->json('pagination.total'));
+        $this->assertSame(1, $before->json('meta.pagination.total'));
 
         // Goes through RecipeController::store() -> RecipeService::create(),
         // which is what actually triggers invalidation - a factory-created
@@ -154,8 +154,72 @@ class RecipeSearchControllerTest extends TestCase
             ->postJson('/api/recipes/search', ['tags' => ['sobremesa']]);
 
         $after->assertStatus(200);
-        $this->assertSame(2, $after->json('pagination.total'));
+        $this->assertSame(2, $after->json('meta.pagination.total'));
         $this->assertFalse($after->json('meta.cache_hit'));
+    }
+
+    public function test_updating_a_recipe_invalidates_the_search_cache(): void
+    {
+        $recipe = Recipe::factory()->for($this->user)->create(['tags' => ['sobremesa']]);
+
+        // Warm the cache for the "sobremesa" search.
+        $before = $this->actingAs($this->user, 'api')
+            ->postJson('/api/recipes/search', ['tags' => ['sobremesa']]);
+        $this->assertSame(1, $before->json('meta.pagination.total'));
+
+        // Retag through the API so it flows RecipeController::update() ->
+        // RecipeService::update(), which is what triggers invalidation - a
+        // direct $recipe->update() would bypass that path and prove nothing.
+        $this->actingAs($this->user, 'api')
+            ->putJson("/api/recipes/{$recipe->id}", ['tags' => ['salgado']])
+            ->assertStatus(200);
+
+        $after = $this->actingAs($this->user, 'api')
+            ->postJson('/api/recipes/search', ['tags' => ['sobremesa']]);
+
+        $after->assertStatus(200);
+        $this->assertSame(0, $after->json('meta.pagination.total'));
+        $this->assertFalse($after->json('meta.cache_hit'));
+    }
+
+    public function test_deleting_a_recipe_invalidates_the_search_cache(): void
+    {
+        $recipes = Recipe::factory()->count(2)->for($this->user)->create(['tags' => ['sobremesa']]);
+
+        $before = $this->actingAs($this->user, 'api')
+            ->postJson('/api/recipes/search', ['tags' => ['sobremesa']]);
+        $this->assertSame(2, $before->json('meta.pagination.total'));
+
+        // Delete through the API so it flows RecipeController::destroy() ->
+        // RecipeService::delete(), the path that triggers invalidation.
+        $this->actingAs($this->user, 'api')
+            ->deleteJson("/api/recipes/{$recipes->first()->id}")
+            ->assertStatus(200);
+
+        $after = $this->actingAs($this->user, 'api')
+            ->postJson('/api/recipes/search', ['tags' => ['sobremesa']]);
+
+        $after->assertStatus(200);
+        $this->assertSame(1, $after->json('meta.pagination.total'));
+        $this->assertFalse($after->json('meta.cache_hit'));
+    }
+
+    public function test_rejects_out_of_range_pagination_input(): void
+    {
+        $response = $this->actingAs($this->user, 'api')
+            ->postJson('/api/recipes/search', ['per_page' => 500, 'page' => 0]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['per_page', 'page']);
+    }
+
+    public function test_rejects_a_non_array_tags_filter(): void
+    {
+        $response = $this->actingAs($this->user, 'api')
+            ->postJson('/api/recipes/search', ['tags' => 'sobremesa']);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors('tags');
     }
 
     public function test_unauthenticated_cannot_search(): void

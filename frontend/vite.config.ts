@@ -20,10 +20,13 @@ export default defineConfig({
     pool: 'threads',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
+    // e2e/*.spec.ts are Playwright specs, not vitest ones - keep them out of
+    // the unit run (they import @playwright/test, which vitest can't resolve).
+    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary'],
-      exclude: ['src/main.ts', 'src/test/**', '**/*.d.ts', 'src/vite-env.d.ts'],
+      exclude: ['src/main.ts', 'src/test/**', '**/*.d.ts', 'src/vite-env.d.ts', 'e2e/**'],
       thresholds: {
         statements: 80,
         branches: 80,

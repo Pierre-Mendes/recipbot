@@ -16,7 +16,7 @@ const recipe: Recipe = {
   updated_at: '',
 }
 
-function renderWithRouter(recipe: Recipe) {
+function renderWithRouter(recipe: Recipe, layout: 'grid' | 'list' = 'grid') {
   const router = createRouter({
     history: createWebHistory(),
     routes: [
@@ -25,9 +25,20 @@ function renderWithRouter(recipe: Recipe) {
     ],
   })
   return render(RecipeCard, {
-    props: { recipe },
+    props: { recipe, layout },
     global: { plugins: [router] },
   })
+}
+
+// A recipe that exercises the optional branches: imported source, a real
+// timestamp (so the "created" label renders) and more than three tags (so the
+// "+N" overflow chip renders).
+const richRecipe: Recipe = {
+  ...recipe,
+  id: 'uuid-2',
+  source_url: 'https://example.com/recipe',
+  created_at: new Date().toISOString(),
+  tags: ['a', 'b', 'c', 'd', 'e'],
 }
 
 describe('RecipeCard', () => {
@@ -45,5 +56,29 @@ describe('RecipeCard', () => {
 
     const link = screen.getByRole('link')
     expect(link).toHaveAttribute('href', '/recipes/uuid-1')
+  })
+
+  it('renders the list layout with title and tags', () => {
+    renderWithRouter(recipe, 'list')
+
+    expect(screen.getByText('Bolo de Chocolate')).toBeInTheDocument()
+    expect(screen.getByText('sobremesa')).toBeInTheDocument()
+  })
+
+  it('shows the imported indicator, a created label, and a tag overflow chip (grid)', () => {
+    renderWithRouter(richRecipe, 'grid')
+
+    // Only the first three tags render, plus a "+2" overflow chip for the rest.
+    expect(screen.getByText('a')).toBeInTheDocument()
+    expect(screen.getByText('c')).toBeInTheDocument()
+    expect(screen.queryByText('d')).not.toBeInTheDocument()
+    expect(screen.getByText('+2')).toBeInTheDocument()
+  })
+
+  it('shows the imported indicator, a created label, and a tag overflow chip (list)', () => {
+    renderWithRouter(richRecipe, 'list')
+
+    expect(screen.getByText('+2')).toBeInTheDocument()
+    expect(screen.getByLabelText('Importada de uma URL')).toBeInTheDocument()
   })
 })

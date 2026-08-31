@@ -24,7 +24,9 @@ apiClient.interceptors.response.use(
       const { useAuthStore } = await import('@/stores/auth')
       useAuthStore().clearSession()
       if (window.location.pathname !== '/login') {
-        window.location.assign('/login')
+        // replace() (not assign()) so the forced auth redirect doesn't add a
+        // history entry the user can Back into and immediately re-trigger 401.
+        window.location.replace('/login')
       }
     }
     return Promise.reject(error)

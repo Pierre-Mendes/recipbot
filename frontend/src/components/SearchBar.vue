@@ -15,11 +15,7 @@ const selectedTags = ref<string[]>([])
 
 // Search-as-you-type: emit 300ms after the user stops typing, so the parent
 // re-queries without requiring a click on "Buscar".
-watchDebounced(
-  query,
-  () => emit('search', query.value, selectedTags.value),
-  { debounce: 300 },
-)
+watchDebounced(query, () => emit('search', query.value, selectedTags.value), { debounce: 300 })
 
 function toggleTag(tag: string) {
   selectedTags.value = selectedTags.value.includes(tag)
@@ -45,11 +41,9 @@ function handleSubmit() {
           class="pl-9 h-11 bg-background/50 backdrop-blur-sm"
         />
       </div>
-      <Button type="submit" size="default" class="h-11 px-6 shadow-sm">
-        Buscar
-      </Button>
+      <Button type="submit" size="default" class="h-11 px-6 shadow-sm"> Buscar </Button>
     </form>
-    
+
     <div v-if="props.availableTags.length" class="flex flex-wrap gap-2">
       <button
         v-for="tag in props.availableTags"
@@ -64,9 +58,13 @@ function handleSubmit() {
         @click="toggleTag(tag.name)"
       >
         {{ tag.name }}
-        <span 
+        <span
           class="ml-1.5 rounded-full px-1.5 py-0.5 text-[10px]"
-          :class="selectedTags.includes(tag.name) ? 'bg-primary-foreground/20' : 'bg-muted text-muted-foreground'"
+          :class="
+            selectedTags.includes(tag.name)
+              ? 'bg-primary-foreground/20'
+              : 'bg-muted text-muted-foreground'
+          "
         >
           {{ tag.count }}
         </span>

@@ -73,14 +73,17 @@ US01 + US02: Users can create, read, update, and delete recipes with manual inpu
 **Response (201 Created)**:
 ```json
 {
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "user_id": "user_123",
-  "title": "Bolo de Chocolate",
-  "ingredients": [...],
-  "tags": ["sobremesa", "chocolate", "fácil"],
-  "source_url": null,
-  "created_at": "2024-08-27T10:30:00Z",
-  "updated_at": "2024-08-27T10:30:00Z"
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "user_id": "user_123",
+    "title": "Bolo de Chocolate",
+    "ingredients": [...],
+    "tags": ["sobremesa", "chocolate", "fácil"],
+    "source_url": null,
+    "created_at": "2024-08-27T10:30:00Z",
+    "updated_at": "2024-08-27T10:30:00Z"
+  },
+  "message": "Recipe created successfully"
 }
 ```
 
@@ -133,11 +136,13 @@ US01 + US02: Users can create, read, update, and delete recipes with manual inpu
       "created_at": "2024-08-27T10:30:00Z"
     }
   ],
-  "pagination": {
-    "total": 42,
-    "per_page": 20,
-    "current_page": 1,
-    "last_page": 3
+  "meta": {
+    "pagination": {
+      "total": 42,
+      "per_page": 20,
+      "current_page": 1,
+      "last_page": 3
+    }
   }
 }
 ```
@@ -147,14 +152,16 @@ US01 + US02: Users can create, read, update, and delete recipes with manual inpu
 **Response (200 OK)**:
 ```json
 {
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "user_id": "user_123",
-  "title": "Bolo de Chocolate",
-  "ingredients": [...],
-  "tags": ["sobremesa", "chocolate"],
-  "source_url": "https://www.tudogostoso.com.br/...",
-  "created_at": "2024-08-27T10:30:00Z",
-  "updated_at": "2024-08-27T10:30:00Z"
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "user_id": "user_123",
+    "title": "Bolo de Chocolate",
+    "ingredients": [...],
+    "tags": ["sobremesa", "chocolate"],
+    "source_url": "https://www.tudogostoso.com.br/...",
+    "created_at": "2024-08-27T10:30:00Z",
+    "updated_at": "2024-08-27T10:30:00Z"
+  }
 }
 ```
 
@@ -176,17 +183,25 @@ US01 + US02: Users can create, read, update, and delete recipes with manual inpu
 **Response (200 OK)**:
 ```json
 {
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "title": "Bolo de Chocolate Aprimorado",
-  "tags": ["sobremesa", "chocolate", "gourmet"],
-  "updated_at": "2024-08-27T11:00:00Z"
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "title": "Bolo de Chocolate Aprimorado",
+    "tags": ["sobremesa", "chocolate", "gourmet"],
+    "updated_at": "2024-08-27T11:00:00Z"
+  },
+  "message": "Recipe updated successfully"
 }
 ```
 
 ### DELETE /api/recipes/{id} (Delete)
 
-**Response (204 No Content)**:
-(No body, just status 204)
+**Response (200 OK)**:
+```json
+{
+  "data": null,
+  "message": "Recipe deleted successfully"
+}
+```
 
 ---
 

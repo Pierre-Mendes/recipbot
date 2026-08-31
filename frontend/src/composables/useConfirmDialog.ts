@@ -18,6 +18,10 @@ let resolvePromise: ((value: boolean) => void) | null = null
 
 export function useConfirmDialog() {
   function confirm(opts: ConfirmDialogOptions): Promise<boolean> {
+    // If a previous confirmation is still pending, settle it as cancelled so
+    // its caller isn't left awaiting a Promise that never resolves once this
+    // call overwrites resolvePromise.
+    resolvePromise?.(false)
     options.value = opts
     isOpen.value = true
     return new Promise<boolean>((resolve) => {

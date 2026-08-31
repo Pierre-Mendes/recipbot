@@ -31,12 +31,36 @@ describe('recipes api', () => {
 
   it('listRecipes requests the given page and returns the paginated payload', async () => {
     const meta = { current_page: 2, total: 1, per_page: 20, last_page: 1 }
-    const get = vi.spyOn(apiClient, 'get').mockResolvedValue({ data: { data: [recipe], meta } })
+    const get = vi
+      .spyOn(apiClient, 'get')
+      .mockResolvedValue({ data: { data: [recipe], meta: { pagination: meta } } })
 
     const result = await listRecipes(2)
 
     expect(get).toHaveBeenCalledWith('/recipes', { params: { page: 2 } })
     expect(result).toEqual({ data: [recipe], meta })
+  })
+
+  it('listRecipes falls back to a default meta when the response omits pagination', async () => {
+    vi.spyOn(apiClient, 'get').mockResolvedValue({ data: { data: [recipe] } })
+
+    const result = await listRecipes()
+
+    expect(result).toEqual({
+      data: [recipe],
+      meta: { current_page: 1, total: 0, per_page: 20, last_page: 1 },
+    })
+  })
+
+  it('searchRecipes falls back to a default meta when the response omits pagination', async () => {
+    vi.spyOn(apiClient, 'post').mockResolvedValue({ data: { data: [recipe] } })
+
+    const result = await searchRecipes({ query: 'bolo' })
+
+    expect(result).toEqual({
+      data: [recipe],
+      meta: { current_page: 1, total: 0, per_page: 20, last_page: 1 },
+    })
   })
 
   it('getRecipe unwraps the data envelope', async () => {
@@ -89,15 +113,11 @@ describe('recipes api', () => {
     expect(result).toEqual(recipe)
   })
 
-  it('searchRecipes posts the filters and normalizes pagination into meta', async () => {
-    // The search endpoint returns pagination under `pagination`, with `meta`
-    // holding search timing/cache info - searchRecipes maps it to { data, meta }.
+  it('searchRecipes posts the filters and normalizes pagination to meta', async () => {
     const pagination = { current_page: 1, total: 1, per_page: 20, last_page: 1 }
-    const post = vi
-      .spyOn(apiClient, 'post')
-      .mockResolvedValue({
-        data: { data: [recipe], pagination, meta: { search_time_ms: 3, cache_hit: false } },
-      })
+    const post = vi.spyOn(apiClient, 'post').mockResolvedValue({
+      data: { data: [recipe], meta: { pagination, search_time_ms: 5, cache_hit: false } },
+    })
 
     const input = { tags: ['sobremesa'], query: 'bolo', page: 1 }
     const result = await searchRecipes(input)
@@ -108,7 +128,7 @@ describe('recipes api', () => {
 
   it('listTags unwraps the tags array', async () => {
     const tags = [{ name: 'sobremesa', count: 3 }]
-    vi.spyOn(apiClient, 'get').mockResolvedValue({ data: { tags } })
+    vi.spyOn(apiClient, 'get').mockResolvedValue({ data: { data: tags } })
 
     const result = await listTags()
 

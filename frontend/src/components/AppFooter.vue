@@ -5,7 +5,9 @@ import { Heart } from 'lucide-vue-next'
 <template>
   <footer class="border-t border-border/40 mt-auto">
     <div class="mx-auto max-w-4xl px-4 py-6">
-      <div class="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
+      <div
+        class="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground"
+      >
         <div class="flex items-center gap-1.5">
           <span>RecipBot</span>
           <span class="text-border">•</span>

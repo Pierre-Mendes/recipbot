@@ -20,36 +20,49 @@ async function handleLogout() {
   <header class="sticky top-0 z-50 glass">
     <div class="mx-auto flex max-w-4xl items-center justify-between px-4 py-4">
       <RouterLink to="/" class="flex items-center gap-2 transition-transform hover:scale-105">
-        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+        <div
+          class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm"
+        >
           <ChefHat class="h-5 w-5" />
         </div>
         <span class="text-xl font-bold tracking-tight text-foreground">RecipBot</span>
       </RouterLink>
-      
+
       <nav class="flex items-center gap-2 sm:gap-4">
         <template v-if="auth.isAuthenticated">
-          <RouterLink to="/" v-slot="{ isActive }">
-            <Button variant="ghost" size="sm" :class="[isActive ? 'bg-accent text-accent-foreground' : 'text-muted-foreground', 'hidden sm:flex']">
+          <RouterLink v-slot="{ isActive }" to="/">
+            <Button
+              variant="ghost"
+              size="sm"
+              :class="[
+                isActive ? 'bg-accent text-accent-foreground' : 'text-muted-foreground',
+                'hidden sm:flex',
+              ]"
+            >
               <BookOpen class="mr-2 h-4 w-4" />
               Minhas Receitas
             </Button>
           </RouterLink>
           <RouterLink to="/recipes/new">
-            <Button variant="default" size="sm" class="shadow-md transition-transform hover:-translate-y-0.5">
+            <Button
+              variant="default"
+              size="sm"
+              class="shadow-md transition-transform hover:-translate-y-0.5"
+            >
               <Plus class="mr-2 h-4 w-4" />
               Nova Receita
             </Button>
           </RouterLink>
         </template>
-        
+
         <div class="flex items-center gap-2 ml-2 pl-3 border-l border-border">
           <!-- Dark Mode Toggle -->
           <Button
             variant="ghost"
             size="icon"
             :title="isDark ? 'Modo claro' : 'Modo escuro'"
-            @click="toggleDarkMode"
             class="text-muted-foreground hover:text-foreground"
+            @click="toggleDarkMode"
           >
             <Transition
               enter-active-class="transition-all duration-200"
@@ -66,10 +79,19 @@ async function handleLogout() {
           </Button>
 
           <template v-if="auth.isAuthenticated">
-            <span v-if="auth.user" class="text-sm font-medium text-muted-foreground hidden md:block">
+            <span
+              v-if="auth.user"
+              class="text-sm font-medium text-muted-foreground hidden md:block"
+            >
               {{ auth.user.name }}
             </span>
-            <Button variant="ghost" size="icon" title="Sair" @click="handleLogout" class="text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Sair"
+              class="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              @click="handleLogout"
+            >
               <LogOut class="h-4 w-4" />
             </Button>
           </template>

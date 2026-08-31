@@ -48,6 +48,10 @@ services:
       APP_ENV: local
       APP_DEBUG: "true"
       APP_URL: http://localhost:8000
+      # Run migrations on boot so a fresh database has its schema (users,
+      # recipes, ...) before the app serves the first request. Only this
+      # service migrates; the workers below wait for it to become healthy.
+      RUN_MIGRATIONS: "true"
       DB_CONNECTION: pgsql
       DB_HOST: postgres
       DB_PORT: 5432
@@ -105,9 +109,12 @@ services:
       - /app/vendor
       - /app/node_modules
     depends_on:
-      - postgres
-      - redis
-      - app
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      app:
+        condition: service_healthy
     command: php artisan queue:listen redis --tries=3 --timeout=90
     networks:
       - recipbot_network
@@ -136,9 +143,12 @@ services:
       - /app/vendor
       - /app/node_modules
     depends_on:
-      - postgres
-      - redis
-      - app
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      app:
+        condition: service_healthy
     command: /bin/sh -c "while true; do php artisan schedule:run; sleep 60; done"
     networks:
       - recipbot_network

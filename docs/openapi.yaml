@@ -1,0 +1,747 @@
+openapi: 3.0.3
+info:
+  title: RecipBot Backend API
+  version: 1.0.0
+  description: OpenAPI for the current Laravel backend implementation.
+security:
+  - bearerAuth: []
+servers:
+  - url: http://localhost:8000
+    description: Local
+tags:
+  - name: Auth
+  - name: Recipes
+  - name: Search
+  - name: Tags
+paths:
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              name: Pierre Mendes
+              email: pierre@example.com
+              password: password123
+              password_confirmation: password123
+      responses:
+        '201':
+          description: Registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, message]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+                  message:
+                    type: string
+                    example: Registration successful, please log in
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Authenticate and issue JWT token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: pierre@example.com
+              password: password123
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokenResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedMessage'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Invalidate current token
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Logged out successfully
+        '401':
+          $ref: '#/components/responses/UnauthorizedMessage'
+
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      summary: Return current authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/UnauthorizedMessage'
+
+  /api/recipes:
+    get:
+      tags: [Recipes]
+      summary: List authenticated user recipes
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Paginated recipes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecipesListResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedMessage'
+    post:
+      tags: [Recipes]
+      summary: Create recipe manually
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoreRecipeRequest'
+            example:
+              title: Spaghetti Carbonara
+              ingredients: [pasta, eggs, bacon, parmesan]
+              instructions: [Boil pasta., Mix eggs and cheese., Combine.]
+              tags: [italian, pasta]
+      responses:
+        '201':
+          description: Recipe created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, message]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Recipe'
+                  message:
+                    type: string
+                    example: Recipe created successfully
+        '401':
+          $ref: '#/components/responses/UnauthorizedMessage'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/recipes/from-url:
+    post:
+      tags: [Recipes]
+      summary: Create recipe by scraping whitelisted URL
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FromUrlRequest'
+            example:
+              url: https://www.tudogostoso.com.br/receita/37290-churros.html
+              tags: [doce, cafe]
+      responses:
+        '201':
+          description: Recipe created from URL
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, message]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Recipe'
+                  message:
+                    type: string
+                    example: Recipe created successfully
+        '401':
+          $ref: '#/components/responses/UnauthorizedMessage'
+        '422':
+          description: Validation or scraping error
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ValidationErrorResponse'
+                  - $ref: '#/components/schemas/MessageResponse'
+              examples:
+                domain_not_whitelisted:
+                  value:
+                    message: Domain not whitelisted.
+                private_ip_blocked:
+                  value:
+                    message: Private IP blocked.
+                timeout:
+                  value:
+                    message: URL extraction timeout.
+
+  /api/recipes/{recipe}:
+    get:
+      tags: [Recipes]
+      summary: Show recipe by id (owner only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/RecipeId'
+      responses:
+        '200':
+          description: Recipe details
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Recipe'
+        '401':
+          $ref: '#/components/responses/UnauthorizedMessage'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Recipes]
+      summary: Update recipe (owner only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/RecipeId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRecipeRequest'
+            example:
+              title: Bolo de Chocolate Aprimorado
+              tags: [sobremesa, chocolate, gourmet]
+      responses:
+        '200':
+          description: Recipe updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, message]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Recipe'
+                  message:
+                    type: string
+                    example: Recipe updated successfully
+        '401':
+          $ref: '#/components/responses/UnauthorizedMessage'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    patch:
+      tags: [Recipes]
+      summary: Partially update recipe (owner only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/RecipeId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRecipeRequest'
+      responses:
+        '200':
+          description: Recipe updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, message]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Recipe'
+                  message:
+                    type: string
+                    example: Recipe updated successfully
+        '401':
+          $ref: '#/components/responses/UnauthorizedMessage'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [Recipes]
+      summary: Soft-delete recipe (owner only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/RecipeId'
+      responses:
+        '200':
+          description: Recipe deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Recipe deleted successfully
+        '401':
+          $ref: '#/components/responses/UnauthorizedMessage'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/recipes/search:
+    post:
+      tags: [Search]
+      summary: Search recipes by tags and/or text query
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchRecipesRequest'
+            example:
+              tags: [sobremesa, chocolate]
+              query: bolo
+              page: 1
+              per_page: 20
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecipeSearchResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedMessage'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/tags:
+    get:
+      tags: [Tags]
+      summary: Suggest tags for authenticated user
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: q
+          required: false
+          schema:
+            type: string
+          description: Prefix filter for autocomplete
+      responses:
+        '200':
+          description: Tag suggestions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedMessage'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    RecipeId:
+      in: path
+      name: recipe
+      required: true
+      schema:
+        type: string
+        format: uuid
+  responses:
+    ValidationError:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorResponse'
+    UnauthorizedMessage:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/MessageResponse'
+          example:
+            message: Unauthenticated
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/MessageResponse'
+          example:
+            message: This action is unauthorized.
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/MessageResponse'
+          example:
+            message: No query results for model [App\Models\Recipe].
+    TooManyRequests:
+      description: Too many requests
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/MessageResponse'
+          example:
+            message: Too Many Attempts.
+  schemas:
+    User:
+      type: object
+      required: [id, name, email, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Pierre Mendes
+        email:
+          type: string
+          format: email
+          example: pierre@example.com
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+    Recipe:
+      type: object
+      required: [id, user_id, title, ingredients, instructions, tags, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: integer
+          example: 1
+        title:
+          type: string
+          maxLength: 255
+        ingredients:
+          type: array
+          items:
+            type: string
+          maxItems: 20
+        instructions:
+          type: array
+          items:
+            type: string
+          maxItems: 50
+        tags:
+          type: array
+          items:
+            type: string
+          maxItems: 10
+        source_url:
+          type: string
+          format: uri
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+    MessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+    ValidationErrorResponse:
+      type: object
+      required: [message, errors]
+      properties:
+        message:
+          type: string
+          example: The given data was invalid.
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+    AuthTokenResponse:
+      type: object
+      required: [access_token, token_type, expires_in]
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          example: "\u0042earer"
+        expires_in:
+          type: integer
+          description: Token expiration time in seconds.
+          example: 3600
+    RegisterRequest:
+      type: object
+      required: [name, email, password, password_confirmation]
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        email:
+          type: string
+          format: email
+          maxLength: 255
+        password:
+          type: string
+          minLength: 8
+        password_confirmation:
+          type: string
+          minLength: 8
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+    StoreRecipeRequest:
+      type: object
+      required: [title, ingredients]
+      properties:
+        title:
+          type: string
+          minLength: 3
+          maxLength: 255
+        ingredients:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            type: string
+            maxLength: 500
+        instructions:
+          type: array
+          nullable: true
+          maxItems: 50
+          items:
+            type: string
+            maxLength: 1000
+        tags:
+          type: array
+          nullable: true
+          maxItems: 10
+          items:
+            type: string
+            maxLength: 50
+        source_url:
+          type: string
+          format: uri
+          nullable: true
+          maxLength: 2048
+    UpdateRecipeRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 3
+          maxLength: 255
+        ingredients:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            type: string
+            maxLength: 500
+        instructions:
+          type: array
+          nullable: true
+          maxItems: 50
+          items:
+            type: string
+            maxLength: 1000
+        tags:
+          type: array
+          nullable: true
+          maxItems: 10
+          items:
+            type: string
+            maxLength: 50
+        source_url:
+          type: string
+          format: uri
+          nullable: true
+          maxLength: 2048
+    FromUrlRequest:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+          maxLength: 2048
+        tags:
+          type: array
+          nullable: true
+          maxItems: 10
+          items:
+            type: string
+            maxLength: 50
+            pattern: '^[a-zA-Z0-9 -]+$'
+    PaginationMeta:
+      type: object
+      required: [total, per_page, current_page, last_page]
+      properties:
+        total:
+          type: integer
+          example: 42
+        per_page:
+          type: integer
+          example: 20
+        current_page:
+          type: integer
+          example: 1
+        last_page:
+          type: integer
+          example: 3
+    SearchMeta:
+      type: object
+      required: [search_time_ms, cache_hit]
+      properties:
+        search_time_ms:
+          type: integer
+          example: 42
+        cache_hit:
+          type: boolean
+          example: false
+    RecipesListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Recipe'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    RecipeSearchResponse:
+      type: object
+      required: [data, pagination, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Recipe'
+        pagination:
+          $ref: '#/components/schemas/PaginationMeta'
+        meta:
+          $ref: '#/components/schemas/SearchMeta'
+    SearchRecipesRequest:
+      type: object
+      properties:
+        tags:
+          type: array
+          nullable: true
+          maxItems: 10
+          items:
+            type: string
+            maxLength: 50
+        query:
+          type: string
+          nullable: true
+          maxLength: 255
+        page:
+          type: integer
+          minimum: 1
+          nullable: true
+        per_page:
+          type: integer
+          minimum: 1
+          maximum: 100
+          nullable: true
+    TagCount:
+      type: object
+      required: [name, count]
+      properties:
+        name:
+          type: string
+          example: sobremesa
+        count:
+          type: integer
+          example: 42
+    TagsResponse:
+      type: object
+      required: [tags]
+      properties:
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/TagCount'

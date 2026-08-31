@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import type { HTMLAttributes } from 'vue'
 import { cn } from '@/utils/cn'
 
 const props = defineProps<{
-  class?: any
+  class?: HTMLAttributes['class']
   for?: string
 }>()
 </script>
@@ -13,7 +14,7 @@ const props = defineProps<{
     :class="
       cn(
         'text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70',
-        props.class
+        props.class,
       )
     "
   >

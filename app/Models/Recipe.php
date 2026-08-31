@@ -64,31 +64,45 @@ class Recipe extends Model
                 'string',
                 'min:3',
                 'max:255',
-                self::titleNotBlankRule(),
+                function (string $attribute, mixed $value, \Closure $fail) {
+                    if (is_string($value) && trim($value) === '') {
+                        $fail('The '.$attribute.' cannot be only whitespace.');
+                    }
+                },
             ],
             'ingredients' => ['required', 'array', 'min:1', 'max:20'],
             'ingredients.*' => ['string', 'max:255'],
-            'instructions' => ['nullable', 'array', 'max:50'],
+            'instructions' => ['sometimes', 'array', 'max:50'],
             'instructions.*' => ['string', 'max:1000'],
-            'tags' => ['array', 'max:10'],
+            'tags' => ['sometimes', 'array', 'max:10'],
             'tags.*' => ['string', 'max:50', 'regex:/^[\p{L}\p{N} -]+$/u'],
             'source_url' => ['nullable', 'url', 'max:2048'],
         ];
     }
 
     /**
-     * Shared "title is not only whitespace" rule. A bare `min:3` counts spaces,
-     * so "   " would otherwise pass; this is the single source of that guard,
-     * reused by the store/update FormRequests so the API enforces what the
-     * model contract (and its test) declares.
+     * @return array<string, mixed>
      */
-    public static function titleNotBlankRule(): \Closure
+    public static function createRules(): array
     {
-        return function (string $attribute, mixed $value, \Closure $fail): void {
-            if (is_string($value) && trim($value) === '') {
-                $fail('The '.$attribute.' cannot be only whitespace.');
-            }
-        };
+        return self::rules();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function updateRules(): array
+    {
+        return [
+            'title' => ['sometimes', 'string', 'min:3', 'max:255'],
+            'ingredients' => ['sometimes', 'array', 'min:1', 'max:20'],
+            'ingredients.*' => ['string', 'max:255'],
+            'instructions' => ['sometimes', 'array', 'max:50'],
+            'instructions.*' => ['string', 'max:1000'],
+            'tags' => ['sometimes', 'array', 'max:10'],
+            'tags.*' => ['string', 'max:50', 'regex:/^[\p{L}\p{N} -]+$/u'],
+            'source_url' => ['sometimes', 'nullable', 'url', 'max:2048'],
+        ];
     }
 
     /**

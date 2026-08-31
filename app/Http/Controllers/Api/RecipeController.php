@@ -4,17 +4,18 @@ namespace App\Http\Controllers\Api;
 
 use App\Exceptions\RecipeScrapingException;
 use App\Http\Requests\FromUrlRequest;
+use App\Http\Requests\IndexRecipesRequest;
 use App\Http\Requests\StoreRecipeRequest;
 use App\Http\Requests\UpdateRecipeRequest;
+use App\Http\Resources\RecipeResource;
 use App\Models\Recipe;
 use App\Models\User;
 use App\Services\RecipeScraperService;
 use App\Services\RecipeService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
-class RecipeController
+class RecipeController extends ApiController
 {
     public function __construct(
         private readonly RecipeService $recipes,
@@ -23,22 +24,15 @@ class RecipeController
     /**
      * List the authenticated user's recipes (paginated).
      */
-    public function index(Request $request): JsonResponse
+    public function index(IndexRecipesRequest $request): JsonResponse
     {
         /** @var User $user */
         $user = $request->user();
 
-        $recipes = $this->recipes->getUserRecipes($user);
+        $perPage = (int) $request->input('per_page', config('recipbot.pagination.recipes_default_per_page', 20));
+        $recipes = $this->recipes->getUserRecipes($user, $perPage);
 
-        return response()->json([
-            'data' => $recipes->items(),
-            'meta' => [
-                'current_page' => $recipes->currentPage(),
-                'total' => $recipes->total(),
-                'per_page' => $recipes->perPage(),
-                'last_page' => $recipes->lastPage(),
-            ],
-        ]);
+        return $this->paginated($recipes, RecipeResource::collection($recipes));
     }
 
     /**
@@ -51,10 +45,7 @@ class RecipeController
 
         $recipe = $this->recipes->create($user, $request->validated());
 
-        return response()->json([
-            'data' => $recipe,
-            'message' => 'Recipe created successfully',
-        ], 201);
+        return $this->success(new RecipeResource($recipe), 'Recipe created successfully', status: 201);
     }
 
     /**
@@ -79,10 +70,7 @@ class RecipeController
             'source_url' => $request->validated('url'),
         ]);
 
-        return response()->json([
-            'data' => $recipe,
-            'message' => 'Recipe created successfully',
-        ], 201);
+        return $this->success(new RecipeResource($recipe), 'Recipe created successfully', status: 201);
     }
 
     /**
@@ -92,7 +80,7 @@ class RecipeController
     {
         Gate::authorize('view', $recipe);
 
-        return response()->json(['data' => $recipe]);
+        return $this->success(new RecipeResource($recipe));
     }
 
     /**
@@ -104,10 +92,7 @@ class RecipeController
 
         $recipe = $this->recipes->update($recipe, $request->validated());
 
-        return response()->json([
-            'data' => $recipe,
-            'message' => 'Recipe updated successfully',
-        ]);
+        return $this->success(new RecipeResource($recipe), 'Recipe updated successfully');
     }
 
     /**
@@ -119,6 +104,6 @@ class RecipeController
 
         $this->recipes->delete($recipe);
 
-        return response()->json(['message' => 'Recipe deleted successfully']);
+        return $this->success(null, 'Recipe deleted successfully');
     }
 }

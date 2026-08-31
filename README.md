@@ -2,6 +2,11 @@
 
 Esta pasta contém **todos os arquivos prontos** para começar o desenvolvimento do RecipBot MVP.
 
+## Alinhamento de melhoria contínua
+
+- Escopo e metas de melhoria: `docs/IMPROVEMENT_SCOPE.md`
+- Runbook de promoção/rollback: `docs/DEPLOYMENT_RUNBOOK.md`
+
 ## 📁 Conteúdo
 
 ```
@@ -87,6 +92,18 @@ docker-compose up --build
 
 ### Passo 5: Começar
 Leia `QUICK_START.md` para próximos passos.
+
+### Passo 6: Documentação da API (OpenAPI/Swagger)
+Com a aplicação rodando:
+
+```bash
+# Arquivo OpenAPI versionado
+cat docs/openapi.yaml
+```
+
+- Swagger UI: `http://localhost:8000/docs`
+- OpenAPI YAML: `http://localhost:8000/docs/openapi.yaml`
+- Em produção, essas rotas retornam `404`.
 
 ---
 

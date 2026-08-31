@@ -17,18 +17,7 @@ class StoreRecipeRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-            'title' => ['required', 'string', 'min:3', 'max:255', Recipe::titleNotBlankRule()],
-            'ingredients' => ['required', 'array', 'min:1', 'max:20'],
-            'ingredients.*' => ['string', 'max:255'],
-            'instructions' => ['nullable', 'array', 'max:50'],
-            'instructions.*' => ['string', 'max:1000'],
-            'tags' => ['nullable', 'array', 'max:10'],
-            // Same tag charset as the URL-import and update paths: Unicode
-            // letters/numbers, spaces and hyphens only.
-            'tags.*' => ['string', 'max:50', 'regex:/^[\p{L}\p{N} -]+$/u'],
-            'source_url' => ['nullable', 'url', 'max:2048'],
-        ];
+        return Recipe::createRules();
     }
 
     /**

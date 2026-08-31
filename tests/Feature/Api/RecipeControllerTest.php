@@ -29,9 +29,9 @@ class RecipeControllerTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonStructure([
                 'data' => [
-                    '*' => ['id', 'user_id', 'title', 'ingredients', 'tags', 'created_at'],
+                    '*' => ['id', 'user_id', 'title', 'ingredients', 'instructions', 'tags', 'created_at'],
                 ],
-                'meta' => ['current_page', 'total', 'per_page', 'last_page'],
+                'meta' => ['pagination' => ['current_page', 'total', 'per_page', 'last_page']],
             ])
             ->assertJsonCount(5, 'data');
     }
@@ -115,6 +115,19 @@ class RecipeControllerTest extends TestCase
             ->assertJsonValidationErrors(['ingredients']);
     }
 
+    public function test_rejects_null_tags_in_create_payload(): void
+    {
+        $response = $this->actingAs($this->user, 'api')
+            ->postJson('/api/recipes', [
+                'title' => 'Test Recipe',
+                'ingredients' => ['salt'],
+                'tags' => null,
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['tags']);
+    }
+
     public function test_title_validation_required(): void
     {
         $response = $this->actingAs($this->user, 'api')
@@ -178,6 +191,19 @@ class RecipeControllerTest extends TestCase
         ]);
     }
 
+    public function test_rejects_null_tags_in_update_payload(): void
+    {
+        $recipe = Recipe::factory()->for($this->user)->create();
+
+        $response = $this->actingAs($this->user, 'api')
+            ->patchJson("/api/recipes/{$recipe->id}", [
+                'tags' => null,
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['tags']);
+    }
+
     public function test_cannot_update_others_recipe(): void
     {
         $otherUser = User::factory()->create();
@@ -215,5 +241,13 @@ class RecipeControllerTest extends TestCase
     {
         $response = $this->getJson('/api/recipes');
         $response->assertStatus(401);
+    }
+
+    public function test_list_rejects_out_of_range_per_page(): void
+    {
+        $response = $this->actingAs($this->user, 'api')
+            ->getJson('/api/recipes?per_page=999');
+
+        $response->assertStatus(422)->assertJsonValidationErrors(['per_page']);
     }
 }

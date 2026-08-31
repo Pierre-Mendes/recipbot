@@ -89,7 +89,9 @@ function goToPage(page: number) {
     <div class="mb-8 flex items-center justify-between">
       <div>
         <h1 class="text-3xl font-bold tracking-tight text-foreground">Minhas Receitas</h1>
-        <p class="text-muted-foreground mt-1">Gerencie e descubra suas ideias culinárias favoritas.</p>
+        <p class="text-muted-foreground mt-1">
+          Gerencie e descubra suas ideias culinárias favoritas.
+        </p>
       </div>
     </div>
 
@@ -101,7 +103,9 @@ function goToPage(page: number) {
       class="flex flex-wrap items-center justify-between gap-3 mb-5"
     >
       <p class="text-sm text-muted-foreground">
-        <span class="font-semibold text-foreground">{{ store.meta?.total ?? store.recipes.length }}</span>
+        <span class="font-semibold text-foreground">{{
+          store.meta?.total ?? store.recipes.length
+        }}</span>
         {{ (store.meta?.total ?? store.recipes.length) === 1 ? 'receita' : 'receitas' }}
       </p>
 
@@ -124,7 +128,11 @@ function goToPage(page: number) {
             :aria-pressed="viewMode === 'grid'"
             title="Grade"
             class="flex h-8 w-8 items-center justify-center rounded transition-colors"
-            :class="viewMode === 'grid' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'"
+            :class="
+              viewMode === 'grid'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            "
             @click="viewMode = 'grid'"
           >
             <LayoutGrid class="h-4 w-4" />
@@ -134,7 +142,11 @@ function goToPage(page: number) {
             :aria-pressed="viewMode === 'list'"
             title="Lista"
             class="flex h-8 w-8 items-center justify-center rounded transition-colors"
-            :class="viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'"
+            :class="
+              viewMode === 'list'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            "
             @click="viewMode = 'list'"
           >
             <List class="h-4 w-4" />
