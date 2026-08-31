@@ -1,4 +1,4 @@
-FROM node:20-alpine AS builder
+FROM node:22-alpine
 
 WORKDIR /app
 
@@ -11,24 +11,10 @@ RUN npm ci
 # Copy source code
 COPY frontend/ .
 
-# Build application
-RUN npm run build
+# Ensure node user owns the files, particularly node_modules for Vite cache
+RUN chown -R node:node /app
 
-# Runtime stage
-FROM node:20-alpine
-
-WORKDIR /app
-
-# Install lightweight HTTP server
-RUN npm install -g serve
-
-# Copy built application from builder
-COPY --from=builder /app/dist ./dist
-
-# Create non-root user
-RUN addgroup -g 1000 node && \
-    adduser -D -u 1000 -G node node
-
+# Switch to non-root user
 USER node
 
 # Expose port

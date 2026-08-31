@@ -60,6 +60,7 @@ export interface TagCount {
 export interface RecipeFormInput {
   title: string
   ingredients: string[]
+  instructions: string[]
   tags: string[]
   source_url?: string | null
 }

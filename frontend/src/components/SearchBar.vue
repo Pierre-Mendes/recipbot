@@ -1,7 +1,11 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
+import { watchDebounced } from '@vueuse/core'
+import { Search } from 'lucide-vue-next'
 
 import type { TagCount } from '@/types'
+import Input from './ui/Input.vue'
+import Button from './ui/Button.vue'
 
 const props = defineProps<{ availableTags: TagCount[] }>()
 const emit = defineEmits<{ search: [query: string, tags: string[]] }>()
@@ -9,7 +13,9 @@ const emit = defineEmits<{ search: [query: string, tags: string[]] }>()
 const query = ref('')
 const selectedTags = ref<string[]>([])
 
-const hasActiveFilters = computed(() => query.value.trim() !== '' || selectedTags.value.length > 0)
+// Search-as-you-type: emit 300ms after the user stops typing, so the parent
+// re-queries without requiring a click on "Buscar".
+watchDebounced(query, () => emit('search', query.value, selectedTags.value), { debounce: 300 })
 
 function toggleTag(tag: string) {
   selectedTags.value = selectedTags.value.includes(tag)
@@ -21,60 +27,47 @@ function toggleTag(tag: string) {
 function handleSubmit() {
   emit('search', query.value, selectedTags.value)
 }
-
-function clearFilters() {
-  query.value = ''
-  selectedTags.value = []
-  emit('search', '', [])
-}
 </script>
 
 <template>
-  <div class="mb-4">
-    <form class="flex gap-2" @submit.prevent="handleSubmit">
-      <input
-        v-model="query"
-        type="search"
-        placeholder="Search by title or ingredient..."
-        class="flex-1 rounded border border-gray-300 px-3 py-2 text-sm"
-      />
-      <button type="submit" class="rounded bg-purple-600 px-4 py-2 text-sm text-white">
-        Search
-      </button>
-      <button
-        v-if="hasActiveFilters"
-        type="button"
-        class="rounded border border-gray-300 px-4 py-2 text-sm text-gray-700"
-        @click="clearFilters"
-      >
-        Clear
-      </button>
+  <div class="mb-6 space-y-4">
+    <form class="flex gap-3" @submit.prevent="handleSubmit">
+      <div class="relative flex-1">
+        <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          v-model="query"
+          type="search"
+          placeholder="Buscar por título ou ingrediente..."
+          class="pl-9 h-11 bg-background/50 backdrop-blur-sm"
+        />
+      </div>
+      <Button type="submit" size="default" class="h-11 px-6 shadow-sm"> Buscar </Button>
     </form>
-    <p v-if="hasActiveFilters" class="mt-2 text-xs text-gray-500">
-      Active filters:
-      <span v-if="query.trim()">
-        query "<strong>{{ query.trim() }}</strong
-        >"
-      </span>
-      <span v-if="selectedTags.length">
-        <span v-if="query.trim()"> + </span>{{ selectedTags.length }} tag(s)
-      </span>
-    </p>
-    <div v-if="props.availableTags.length" class="mt-2 flex flex-wrap gap-1">
+
+    <div v-if="props.availableTags.length" class="flex flex-wrap gap-2">
       <button
         v-for="tag in props.availableTags"
         :key="tag.name"
         type="button"
-        :aria-pressed="selectedTags.includes(tag.name)"
-        class="rounded-full px-2 py-0.5 text-xs"
+        class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer"
         :class="
           selectedTags.includes(tag.name)
-            ? 'bg-purple-600 text-white'
-            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            ? 'border-transparent bg-primary text-primary-foreground hover:bg-primary/80 shadow-sm'
+            : 'border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground'
         "
         @click="toggleTag(tag.name)"
       >
-        {{ tag.name }} ({{ tag.count }})
+        {{ tag.name }}
+        <span
+          class="ml-1.5 rounded-full px-1.5 py-0.5 text-[10px]"
+          :class="
+            selectedTags.includes(tag.name)
+              ? 'bg-primary-foreground/20'
+              : 'bg-muted text-muted-foreground'
+          "
+        >
+          {{ tag.count }}
+        </span>
       </button>
     </div>
   </div>

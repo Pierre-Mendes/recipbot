@@ -159,7 +159,7 @@ describe('recipes store', () => {
     vi.mocked(recipesApi.createRecipe).mockResolvedValue(sampleRecipe)
 
     const store = useRecipesStore()
-    const input = { title: 'Bolo', ingredients: ['farinha'], tags: ['sobremesa'] }
+    const input = { title: 'Bolo', ingredients: ['farinha'], instructions: [], tags: ['sobremesa'] }
     const created = await store.create(input)
 
     expect(recipesApi.createRecipe).toHaveBeenCalledWith(input)

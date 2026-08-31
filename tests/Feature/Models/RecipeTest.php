@@ -76,6 +76,12 @@ test('validation fails when a tag has invalid characters', function () {
     expect(validateRecipe(['tags' => ['sobremesa!']])->fails())->toBeTrue();
 });
 
+test('validation passes with accented (unicode) tag characters', function () {
+    // Portuguese recipe tags routinely carry accents ("café", "pão");
+    // tag validation accepts any unicode letter or number, not just ASCII.
+    expect(validateRecipe(['tags' => ['café', 'pão caseiro', 'sobremesa-doce']])->passes())->toBeTrue();
+});
+
 test('validation fails with an invalid source url', function () {
     expect(validateRecipe(['source_url' => 'not-a-url'])->fails())->toBeTrue();
 });

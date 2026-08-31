@@ -17,19 +17,19 @@ export function newTestUser(): TestUser {
 
 export async function registerAndLogin(page: Page, user: TestUser): Promise<void> {
   await page.goto('/register')
-  await page.getByLabel('Name').fill(user.name)
-  await page.getByLabel('Email').fill(user.email)
-  await page.getByLabel('Password', { exact: true }).fill(user.password)
-  await page.getByLabel('Confirm password').fill(user.password)
-  await page.getByRole('button', { name: 'Register' }).click()
+  await page.getByLabel('Nome').fill(user.name)
+  await page.getByLabel('E-mail').fill(user.email)
+  await page.getByLabel('Senha', { exact: true }).fill(user.password)
+  await page.getByLabel('Confirmar Senha').fill(user.password)
+  await page.getByRole('button', { name: 'Cadastrar' }).click()
 
-  await expect(page.getByText('Registered! Redirecting to login...')).toBeVisible()
+  await expect(page.getByText('Conta criada com sucesso!')).toBeVisible()
   await page.waitForURL('**/login')
 
-  await page.getByLabel('Email').fill(user.email)
-  await page.getByLabel('Password', { exact: true }).fill(user.password)
-  await page.getByRole('button', { name: 'Log in' }).click()
+  await page.getByLabel('E-mail').fill(user.email)
+  await page.getByLabel('Senha', { exact: true }).fill(user.password)
+  await page.getByRole('button', { name: 'Entrar' }).click()
 
   await expect(page).toHaveURL('/')
-  await expect(page.getByRole('heading', { name: 'My Recipes' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Minhas Receitas' })).toBeVisible()
 }

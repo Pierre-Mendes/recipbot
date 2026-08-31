@@ -18,6 +18,7 @@ const recipe: Recipe = {
   user_id: 1,
   title: 'Bolo',
   ingredients: ['farinha'],
+  instructions: null,
   tags: [],
   source_url: null,
   created_at: '',
@@ -41,6 +42,28 @@ describe('recipes api', () => {
     expect(result).toEqual({ data: [recipe], meta })
   })
 
+  it('listRecipes falls back to a default meta when the response omits pagination', async () => {
+    vi.spyOn(apiClient, 'get').mockResolvedValue({ data: { data: [recipe] } })
+
+    const result = await listRecipes()
+
+    expect(result).toEqual({
+      data: [recipe],
+      meta: { current_page: 1, total: 0, per_page: 20, last_page: 1 },
+    })
+  })
+
+  it('searchRecipes falls back to a default meta when the response omits pagination', async () => {
+    vi.spyOn(apiClient, 'post').mockResolvedValue({ data: { data: [recipe] } })
+
+    const result = await searchRecipes({ query: 'bolo' })
+
+    expect(result).toEqual({
+      data: [recipe],
+      meta: { current_page: 1, total: 0, per_page: 20, last_page: 1 },
+    })
+  })
+
   it('getRecipe unwraps the data envelope', async () => {
     vi.spyOn(apiClient, 'get').mockResolvedValue({ data: { data: recipe } })
 
@@ -49,12 +72,41 @@ describe('recipes api', () => {
     expect(result).toEqual(recipe)
   })
 
+  it('getRecipe coerces null tags/ingredients into arrays so rendering never throws', async () => {
+    // A stale backend or a legacy row can send null jsonb fields; rendering does
+    // recipe.tags.length / ingredients.join(...), which would throw and blank the
+    // page. The API layer normalizes these to [] at the boundary.
+    vi.spyOn(apiClient, 'get').mockResolvedValue({
+      data: { data: { ...recipe, tags: null, ingredients: null, instructions: null } },
+    })
+
+    const result = await getRecipe('uuid-1')
+
+    expect(result.tags).toEqual([])
+    expect(result.ingredients).toEqual([])
+    expect(result.instructions).toBeNull()
+  })
+
+  it('getRecipe tolerates an unwrapped recipe body (no data envelope)', async () => {
+    vi.spyOn(apiClient, 'get').mockResolvedValue({ data: recipe })
+
+    const result = await getRecipe('uuid-1')
+
+    expect(result).toEqual(recipe)
+  })
+
+  it('getRecipe throws on a response with no usable recipe, so the page shows "not found" instead of blanking', async () => {
+    vi.spyOn(apiClient, 'get').mockResolvedValue({ data: { data: null } })
+
+    await expect(getRecipe('uuid-1')).rejects.toThrow()
+  })
+
   it('createRecipe posts the form input', async () => {
     const post = vi
       .spyOn(apiClient, 'post')
       .mockResolvedValue({ data: { data: recipe, message: 'ok' } })
 
-    const input = { title: 'Bolo', ingredients: ['farinha'], tags: [] }
+    const input = { title: 'Bolo', ingredients: ['farinha'], instructions: [], tags: [] }
     const result = await createRecipe(input)
 
     expect(post).toHaveBeenCalledWith('/recipes', input)
