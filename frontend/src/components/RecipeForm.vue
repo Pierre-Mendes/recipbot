@@ -26,7 +26,7 @@ const emit = defineEmits<{
 const mode = ref<'manual' | 'url'>('manual')
 
 const title = ref(props.recipe?.title ?? '')
-const ingredientsText = ref(props.recipe?.ingredients.join('\n') ?? '')
+const ingredientsText = ref(props.recipe?.ingredients?.join('\n') ?? '')
 const instructionsText = ref(props.recipe?.instructions?.join('\n') ?? '')
 const sourceUrl = ref(props.recipe?.source_url ?? '')
 const importUrl = ref('')

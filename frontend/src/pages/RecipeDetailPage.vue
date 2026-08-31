@@ -122,7 +122,7 @@ function goBack() {
         </div>
       </div>
 
-      <div v-if="recipe.tags.length" class="flex flex-wrap gap-2 mt-4">
+      <div v-if="recipe.tags?.length" class="flex flex-wrap gap-2 mt-4">
         <span
           v-for="tag in recipe.tags"
           :key="tag"

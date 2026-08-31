@@ -18,12 +18,19 @@ const toast = useToast()
 const recipe = ref<Recipe | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const loadError = ref(false)
 
 const recipeId = route.params.id as string | undefined
 
 onMounted(async () => {
   if (recipeId) {
-    recipe.value = await getRecipe(recipeId)
+    try {
+      recipe.value = await getRecipe(recipeId)
+    } catch {
+      // Never leave the page stuck on "Carregando..." when the recipe can't be
+      // loaded (deleted, network error, or an unexpected response shape).
+      loadError.value = true
+    }
   }
 })
 
@@ -86,10 +93,21 @@ function goBack() {
       {{ error }}
     </div>
     
-    <div v-if="recipeId && !recipe" class="py-12 flex justify-center text-muted-foreground animate-pulse">
+    <div
+      v-if="loadError"
+      class="py-12 text-center text-muted-foreground"
+    >
+      Não foi possível carregar esta receita. Ela pode ter sido removida.
+      <RouterLink to="/" class="ml-1 text-primary hover:underline">Voltar para receitas</RouterLink>
+    </div>
+
+    <div
+      v-else-if="recipeId && !recipe"
+      class="py-12 flex justify-center text-muted-foreground animate-pulse"
+    >
       Carregando detalhes da receita...
     </div>
-    
+
     <RecipeForm
       v-else
       :recipe="recipe"
