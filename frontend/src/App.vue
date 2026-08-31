@@ -25,9 +25,7 @@ onMounted(() => {
     <NavBar />
     <main class="mx-auto max-w-4xl w-full px-4 py-6 flex-1">
       <RouterView v-slot="{ Component, route }">
-        <Transition name="page" mode="out-in">
-          <component :is="Component" :key="route.path" />
-        </Transition>
+        <component :is="Component" :key="route.path" />
       </RouterView>
     </main>
     <AppFooter />
@@ -35,21 +33,3 @@ onMounted(() => {
     <ConfirmDialog />
   </div>
 </template>
-
-<style>
-.page-enter-active {
-  transition:
-    opacity 0.2s ease,
-    transform 0.2s ease;
-}
-.page-leave-active {
-  transition: opacity 0.15s ease;
-}
-.page-enter-from {
-  opacity: 0;
-  transform: translateY(8px);
-}
-.page-leave-to {
-  opacity: 0;
-}
-</style>
