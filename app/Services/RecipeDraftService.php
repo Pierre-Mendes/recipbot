@@ -40,14 +40,6 @@ class RecipeDraftService
         return $draft;
     }
 
-    /**
-     * Drop a draft once the recipe has been created from it.
-     */
-    public function forget(User $user, string $id): void
-    {
-        Cache::forget($this->key($user, $id));
-    }
-
     private function key(User $user, string $id): string
     {
         return "recipe_draft:{$user->id}:{$id}";

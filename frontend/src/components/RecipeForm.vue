@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { PenLine, Link as LinkIcon, Loader2, Save, DownloadCloud, X } from 'lucide-vue-next'
 
 import type { FromUrlInput, Recipe, RecipeDraft, RecipeFormInput } from '@/types'
@@ -40,6 +40,27 @@ const importUrl = ref('')
 // Tag Chips Logic
 const tags = ref<string[]>(props.recipe?.tags ? [...props.recipe.tags] : [])
 const tagInput = ref('')
+
+// The fields above are seeded from `recipe` at setup. That covers the edit
+// flow (the form only mounts once the recipe is loaded) but NOT the import
+// review flow, where the form is already mounted and `recipe` changes from
+// null to the extracted draft in place. Re-hydrate whenever `recipe` changes
+// so the review screen actually shows what was imported (and clears back to
+// empty when the draft is discarded). The parent only swaps `recipe` on real
+// transitions, so this never clobbers in-progress edits.
+watch(
+  () => props.recipe,
+  (recipe) => {
+    title.value = recipe?.title ?? ''
+    ingredientsText.value = recipe?.ingredients?.join('\n') ?? ''
+    instructionsText.value = recipe?.instructions?.join('\n') ?? ''
+    sourceUrl.value = recipe?.source_url ?? ''
+    tags.value = recipe?.tags ? [...recipe.tags] : []
+    if (recipe) {
+      mode.value = 'manual'
+    }
+  },
+)
 
 function handleTagInput(e: KeyboardEvent) {
   if (e.key === ',' || e.key === 'Enter') {
