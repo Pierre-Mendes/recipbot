@@ -79,6 +79,38 @@ class RecipeScraperServiceTest extends TestCase
         );
     }
 
+    public function test_strips_leading_step_numbers_that_duplicate_the_position(): void
+    {
+        // TudoGostoso embeds the step number in the text; the UI numbers steps
+        // itself, so "2 Quando..." would render as "2. 2 Quando...".
+        $html = '<script type="application/ld+json">'.json_encode([
+            '@context' => 'https://schema.org',
+            '@type' => 'Recipe',
+            'name' => 'Churros',
+            'recipeIngredient' => ['2 ovos'],
+            'recipeInstructions' => [
+                ['@type' => 'HowToStep', 'text' => 'Numa panela, adicione o leite.'],
+                ['@type' => 'HowToStep', 'text' => '2 Quando ferver, adicione a farinha.'],
+                ['@type' => 'HowToStep', 'text' => '3. Coloque num saco de confeiteiro.'],
+                ['@type' => 'HowToStep', 'text' => '5 colheres de canela por cima.'],
+            ],
+        ], JSON_UNESCAPED_UNICODE).'</script>';
+
+        Http::fake([
+            self::URL => Http::response($html, 200, ['Content-Type' => 'text/html']),
+        ]);
+
+        $result = $this->service()->extract(self::URL);
+
+        $this->assertSame([
+            'Numa panela, adicione o leite.',
+            'Quando ferver, adicione a farinha.',
+            'Coloque num saco de confeiteiro.',
+            // Step 4's leading "5" does NOT match the position, so it stays.
+            '5 colheres de canela por cima.',
+        ], $result['instructions']);
+    }
+
     public function test_falls_back_to_heuristic_parsing_without_json_ld(): void
     {
         Http::fake([

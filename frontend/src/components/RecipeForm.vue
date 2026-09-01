@@ -8,6 +8,7 @@ import CardContent from './ui/CardContent.vue'
 import Input from './ui/Input.vue'
 import Label from './ui/Label.vue'
 import Button from './ui/Button.vue'
+import ListEditor from './ListEditor.vue'
 import { cn } from '@/utils/cn'
 
 const props = withDefaults(
@@ -32,8 +33,8 @@ const emit = defineEmits<{
 const mode = ref<'manual' | 'url'>('manual')
 
 const title = ref(props.recipe?.title ?? '')
-const ingredientsText = ref(props.recipe?.ingredients?.join('\n') ?? '')
-const instructionsText = ref(props.recipe?.instructions?.join('\n') ?? '')
+const ingredients = ref<string[]>(props.recipe?.ingredients ? [...props.recipe.ingredients] : [])
+const instructions = ref<string[]>(props.recipe?.instructions ? [...props.recipe.instructions] : [])
 const sourceUrl = ref(props.recipe?.source_url ?? '')
 const notes = ref(props.recipe?.notes ?? '')
 const importUrl = ref('')
@@ -53,8 +54,8 @@ watch(
   () => props.recipe,
   (recipe) => {
     title.value = recipe?.title ?? ''
-    ingredientsText.value = recipe?.ingredients?.join('\n') ?? ''
-    instructionsText.value = recipe?.instructions?.join('\n') ?? ''
+    ingredients.value = recipe?.ingredients ? [...recipe.ingredients] : []
+    instructions.value = recipe?.instructions ? [...recipe.instructions] : []
     sourceUrl.value = recipe?.source_url ?? ''
     notes.value = recipe?.notes ?? ''
     tags.value = recipe?.tags ? [...recipe.tags] : []
@@ -85,21 +86,15 @@ function removeTag(index: number) {
   tags.value.splice(index, 1)
 }
 
-function parseLines(text: string): string[] {
-  return text
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-}
-
 function handleManualSubmit() {
   // force add any pending tag before submit
   if (tagInput.value) addTag()
 
+  // ListEditor already emits trimmed, non-empty items.
   emit('submit', {
     title: title.value,
-    ingredients: parseLines(ingredientsText.value),
-    instructions: parseLines(instructionsText.value),
+    ingredients: ingredients.value,
+    instructions: instructions.value,
     tags: tags.value,
     source_url: sourceUrl.value || null,
     notes: notes.value.trim() || null,
@@ -163,27 +158,22 @@ const textareaClass =
             placeholder="ex: Bolo de Cenoura com Chocolate"
           />
         </div>
-        <div class="space-y-2">
-          <Label for="ingredients">Ingredientes (um por linha)</Label>
-          <textarea
-            id="ingredients"
-            v-model="ingredientsText"
-            required
-            rows="6"
-            :class="cn(textareaClass)"
-            placeholder="2 xícaras de farinha&#10;1 xícara de açúcar&#10;..."
-          />
-        </div>
-        <div class="space-y-2">
-          <Label for="instructions">Modo de Preparo (um passo por linha)</Label>
-          <textarea
-            id="instructions"
-            v-model="instructionsText"
-            rows="6"
-            :class="cn(textareaClass)"
-            placeholder="Pré-aqueça o forno a 180°C&#10;Misture os ingredientes secos&#10;..."
-          />
-        </div>
+        <ListEditor
+          v-model="ingredients"
+          label="Ingredientes"
+          item-label="ingrediente"
+          :max-items="20"
+          :max-length="255"
+        />
+
+        <ListEditor
+          v-model="instructions"
+          label="Modo de Preparo"
+          item-label="passo"
+          ordered
+          :max-items="50"
+          :max-length="1000"
+        />
 
         <!-- Tags Input -->
         <div class="space-y-2">
