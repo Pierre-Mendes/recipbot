@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Pencil, Trash2, Link as LinkIcon, ChefHat, ArrowLeft } from 'lucide-vue-next'
+import { Pencil, Trash2, Link as LinkIcon, ChefHat, ArrowLeft, StickyNote } from 'lucide-vue-next'
 
 import { getRecipe } from '@/api/recipes'
 import type { Recipe } from '@/types'
@@ -56,6 +56,17 @@ async function handleDelete() {
 
 function goBack() {
   router.push({ name: 'recipes' })
+}
+
+/**
+ * Split note text into plain and link segments so URLs render as clickable
+ * anchors without ever using v-html (the raw text stays escaped by Vue).
+ */
+function noteSegments(text: string): { text: string; href: string | null }[] {
+  return text.split(/(https?:\/\/[^\s]+)/g).map((part) => ({
+    text: part,
+    href: /^https?:\/\//.test(part) ? part : null,
+  }))
 }
 </script>
 
@@ -177,6 +188,27 @@ function goBack() {
           <LinkIcon class="h-4 w-4" />
           Fonte Original
         </a>
+
+        <Card v-if="recipe.notes" class="bg-card shadow-sm border-border/50">
+          <CardContent class="p-6">
+            <h2 class="flex items-center text-lg font-semibold text-foreground mb-3">
+              <StickyNote class="h-5 w-5 mr-2 text-primary" />
+              Observação
+            </h2>
+            <p class="text-sm text-card-foreground leading-relaxed whitespace-pre-line break-words">
+              <template v-for="(seg, i) in noteSegments(recipe.notes)" :key="i"
+                ><a
+                  v-if="seg.href"
+                  :href="seg.href"
+                  target="_blank"
+                  rel="noopener nofollow"
+                  class="text-primary underline underline-offset-2 break-all"
+                  >{{ seg.text }}</a
+                ><template v-else>{{ seg.text }}</template></template
+              >
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       <!-- Instructions -->

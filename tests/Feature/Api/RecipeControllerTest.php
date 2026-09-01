@@ -69,6 +69,48 @@ class RecipeControllerTest extends TestCase
         ]);
     }
 
+    public function test_can_create_recipe_with_a_note(): void
+    {
+        $response = $this->actingAs($this->user, 'api')
+            ->postJson('/api/recipes', [
+                'title' => 'Bolo da vovó',
+                'ingredients' => ['farinha', 'ovos'],
+                'notes' => 'Receita do Instagram: https://instagram.com/p/abc',
+            ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.notes', 'Receita do Instagram: https://instagram.com/p/abc');
+
+        $this->assertDatabaseHas('recipes', [
+            'user_id' => $this->user->id,
+            'title' => 'Bolo da vovó',
+            'notes' => 'Receita do Instagram: https://instagram.com/p/abc',
+        ]);
+    }
+
+    public function test_rejects_a_note_longer_than_2000_chars(): void
+    {
+        $response = $this->actingAs($this->user, 'api')
+            ->postJson('/api/recipes', [
+                'title' => 'Bolo',
+                'ingredients' => ['farinha'],
+                'notes' => str_repeat('a', 2001),
+            ]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors(['notes']);
+    }
+
+    public function test_can_update_a_recipe_note(): void
+    {
+        $recipe = Recipe::factory()->for($this->user)->create(['notes' => null]);
+
+        $response = $this->actingAs($this->user, 'api')
+            ->patchJson("/api/recipes/{$recipe->id}", ['notes' => 'Servir gelado']);
+
+        $response->assertStatus(200)->assertJsonPath('data.notes', 'Servir gelado');
+        $this->assertDatabaseHas('recipes', ['id' => $recipe->id, 'notes' => 'Servir gelado']);
+    }
+
     public function test_can_create_recipe_with_instructions(): void
     {
         $data = [

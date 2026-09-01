@@ -35,6 +35,7 @@ const title = ref(props.recipe?.title ?? '')
 const ingredientsText = ref(props.recipe?.ingredients?.join('\n') ?? '')
 const instructionsText = ref(props.recipe?.instructions?.join('\n') ?? '')
 const sourceUrl = ref(props.recipe?.source_url ?? '')
+const notes = ref(props.recipe?.notes ?? '')
 const importUrl = ref('')
 
 // Tag Chips Logic
@@ -55,6 +56,7 @@ watch(
     ingredientsText.value = recipe?.ingredients?.join('\n') ?? ''
     instructionsText.value = recipe?.instructions?.join('\n') ?? ''
     sourceUrl.value = recipe?.source_url ?? ''
+    notes.value = recipe?.notes ?? ''
     tags.value = recipe?.tags ? [...recipe.tags] : []
     if (recipe) {
       mode.value = 'manual'
@@ -100,6 +102,7 @@ function handleManualSubmit() {
     instructions: parseLines(instructionsText.value),
     tags: tags.value,
     source_url: sourceUrl.value || null,
+    notes: notes.value.trim() || null,
   })
 }
 
@@ -212,6 +215,19 @@ const textareaClass =
               @blur="addTag"
             />
           </div>
+        </div>
+
+        <!-- Observação -->
+        <div class="space-y-2">
+          <Label for="notes">Observação (opcional)</Label>
+          <textarea
+            id="notes"
+            v-model="notes"
+            rows="3"
+            maxlength="2000"
+            :class="cn(textareaClass, 'min-h-[80px]')"
+            placeholder="Uma nota, um lembrete, o link de um post..."
+          />
         </div>
 
         <div class="pt-2">
