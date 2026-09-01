@@ -49,6 +49,36 @@ class RecipeScraperServiceTest extends TestCase
         );
     }
 
+    public function test_decodes_html_entities_including_double_encoded_json_ld(): void
+    {
+        // TudoGostoso double-encodes accented characters inside its JSON-LD
+        // HowToStep text ("l&amp;iacute;quidos"), and json_decode never
+        // resolves HTML entities - so the scraper must decode them itself.
+        $html = '<script type="application/ld+json">'.json_encode([
+            '@context' => 'https://schema.org',
+            '@type' => 'Recipe',
+            'name' => 'Bolo r&amp;aacute;pido',
+            'recipeIngredient' => ['1 copo de &amp;aacute;gua', '1 x&iacute;cara de farinha'],
+            'recipeInstructions' => [
+                ['@type' => 'HowToStep', 'text' => 'Bata todos os l&amp;iacute;quidos.'],
+                ['@type' => 'HowToStep', 'text' => 'Misture a canela e o a&amp;ccedil;&amp;uacute;car.'],
+            ],
+        ], JSON_UNESCAPED_UNICODE).'</script>';
+
+        Http::fake([
+            self::URL => Http::response($html, 200, ['Content-Type' => 'text/html']),
+        ]);
+
+        $result = $this->service()->extract(self::URL);
+
+        $this->assertSame('Bolo rápido', $result['title']);
+        $this->assertSame(['1 copo de água', '1 xícara de farinha'], $result['ingredients']);
+        $this->assertSame(
+            ['Bata todos os líquidos.', 'Misture a canela e o açúcar.'],
+            $result['instructions']
+        );
+    }
+
     public function test_falls_back_to_heuristic_parsing_without_json_ld(): void
     {
         Http::fake([

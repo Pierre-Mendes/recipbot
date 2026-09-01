@@ -160,12 +160,12 @@ class RecipeScraperService
                 }
 
                 $ingredients = array_values(array_filter(array_map(
-                    fn ($v) => is_string($v) ? trim($v) : '',
+                    fn ($v) => is_string($v) ? $this->clean($v) : '',
                     (array) ($node['recipeIngredient'] ?? [])
                 ), fn ($v) => $v !== ''));
 
                 return [
-                    'title' => is_string($node['name'] ?? null) ? trim($node['name']) : '',
+                    'title' => is_string($node['name'] ?? null) ? $this->clean($node['name']) : '',
                     'ingredients' => $ingredients,
                     'instructions' => $this->extractInstructions($node['recipeInstructions'] ?? []),
                 ];
@@ -232,7 +232,7 @@ class RecipeScraperService
         $steps = [];
         foreach ($raw as $item) {
             if (is_string($item)) {
-                $steps[] = trim($item);
+                $steps[] = $this->clean($item);
 
                 continue;
             }
@@ -240,12 +240,33 @@ class RecipeScraperService
             if (is_array($item)) {
                 $text = $item['text'] ?? $item['name'] ?? '';
                 if (is_string($text) && $text !== '') {
-                    $steps[] = trim($text);
+                    $steps[] = $this->clean($text);
                 }
             }
         }
 
         return array_values(array_filter($steps, fn ($s) => $s !== ''));
+    }
+
+    /**
+     * Normalize a scraped text fragment.
+     *
+     * Some sites (e.g. TudoGostoso) HTML-encode - and even double-encode -
+     * accented characters inside their JSON-LD, so a HowToStep text arrives
+     * as "l&amp;iacute;quidos" instead of "líquidos". json_decode() only
+     * resolves JSON escapes, never HTML entities, so decode them here.
+     * Decode repeatedly until stable to unwrap the double-encoded case.
+     */
+    private function clean(string $text): string
+    {
+        do {
+            $previous = $text;
+            $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        } while ($text !== $previous);
+
+        $text = preg_replace('/\s+/u', ' ', $text) ?? $text;
+
+        return trim($text);
     }
 
     /**
@@ -268,7 +289,7 @@ class RecipeScraperService
         $title = '';
         $h1 = $xpath->query('//h1');
         if ($h1 !== false && $h1->length > 0) {
-            $title = trim($h1->item(0)->textContent ?? '');
+            $title = $this->clean($h1->item(0)->textContent ?? '');
         }
 
         $ingredients = [];
@@ -278,7 +299,7 @@ class RecipeScraperService
         );
         if ($nodes !== false) {
             foreach ($nodes as $node) {
-                $text = trim($node->textContent ?? '');
+                $text = $this->clean($node->textContent ?? '');
                 if ($text !== '') {
                     $ingredients[] = $text;
                 }
