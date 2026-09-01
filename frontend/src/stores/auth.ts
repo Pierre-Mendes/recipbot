@@ -81,6 +81,14 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = await authApi.me()
   }
 
+  async function updateProfile(input: authApi.UpdateProfileInput): Promise<void> {
+    user.value = await authApi.updateProfile(input)
+  }
+
+  async function changePassword(input: authApi.UpdatePasswordInput): Promise<void> {
+    await authApi.updatePassword(input)
+  }
+
   function extractErrorMessage(e: unknown, fallback: string): string {
     if (
       typeof e === 'object' &&
@@ -103,6 +111,8 @@ export const useAuthStore = defineStore('auth', () => {
     register,
     logout,
     fetchCurrentUser,
+    updateProfile,
+    changePassword,
     clearSession,
   }
 })

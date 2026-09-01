@@ -35,3 +35,23 @@ export async function me(): Promise<User> {
   const { data } = await apiClient.get<ApiResponse<User>>('/auth/me')
   return data.data
 }
+
+export interface UpdateProfileInput {
+  name?: string
+  email?: string
+}
+
+export async function updateProfile(input: UpdateProfileInput): Promise<User> {
+  const { data } = await apiClient.patch<ApiResponse<User>>('/auth/me', input)
+  return data.data
+}
+
+export interface UpdatePasswordInput {
+  current_password: string
+  password: string
+  password_confirmation: string
+}
+
+export async function updatePassword(input: UpdatePasswordInput): Promise<void> {
+  await apiClient.put('/auth/password', input)
+}

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { ChefHat, LogOut, Plus, BookOpen, Sun, Moon } from 'lucide-vue-next'
+import { ChefHat, LogOut, Plus, BookOpen, Sun, Moon, UserCircle } from 'lucide-vue-next'
 
 import { useAuthStore } from '@/stores/auth'
 import { useDarkMode } from '@/composables/useDarkMode'
@@ -79,12 +79,14 @@ async function handleLogout() {
           </Button>
 
           <template v-if="auth.isAuthenticated">
-            <span
-              v-if="auth.user"
-              class="text-sm font-medium text-muted-foreground hidden md:block"
+            <RouterLink
+              :to="{ name: 'profile' }"
+              class="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              title="Perfil"
             >
-              {{ auth.user.name }}
-            </span>
+              <UserCircle class="h-5 w-5" />
+              <span v-if="auth.user" class="hidden md:block">{{ auth.user.name }}</span>
+            </RouterLink>
             <Button
               variant="ghost"
               size="icon"
