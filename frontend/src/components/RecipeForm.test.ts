@@ -35,6 +35,28 @@ describe('RecipeForm', () => {
         instructions: ['Misture os secos', 'Asse por 40 minutos'],
         tags: ['sobremesa', 'chocolate'],
         source_url: null,
+        notes: null,
+      },
+    ])
+  })
+
+  it('includes the optional note in the manual submit payload', async () => {
+    const { emitted } = render(RecipeForm)
+
+    await fireEvent.update(screen.getByLabelText('Título'), 'Bolo')
+    await fireEvent.update(screen.getByLabelText('Ingredientes (um por linha)'), 'farinha')
+    await fireEvent.update(screen.getByLabelText('Observação (opcional)'), 'Ver post no Instagram')
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Criar receita' }))
+
+    expect(emitted().submit[0]).toEqual([
+      {
+        title: 'Bolo',
+        ingredients: ['farinha'],
+        instructions: [],
+        tags: [],
+        source_url: null,
+        notes: 'Ver post no Instagram',
       },
     ])
   })
