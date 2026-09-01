@@ -2,7 +2,14 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 import * as recipesApi from '@/api/recipes'
-import type { FromUrlInput, PaginationMeta, Recipe, RecipeFormInput, TagCount } from '@/types'
+import type {
+  FromUrlInput,
+  PaginationMeta,
+  Recipe,
+  RecipeDraft,
+  RecipeFormInput,
+  TagCount,
+} from '@/types'
 
 export const useRecipesStore = defineStore('recipes', () => {
   const recipes = ref<Recipe[]>([])
@@ -71,6 +78,10 @@ export const useRecipesStore = defineStore('recipes', () => {
     return recipesApi.createRecipeFromUrl(input)
   }
 
+  async function previewFromUrl(input: FromUrlInput): Promise<RecipeDraft> {
+    return recipesApi.previewRecipeFromUrl(input)
+  }
+
   async function update(id: string, input: Partial<RecipeFormInput>): Promise<Recipe> {
     return recipesApi.updateRecipe(id, input)
   }
@@ -91,6 +102,7 @@ export const useRecipesStore = defineStore('recipes', () => {
     fetchTags,
     create,
     createFromUrl,
+    previewFromUrl,
     update,
     remove,
   }

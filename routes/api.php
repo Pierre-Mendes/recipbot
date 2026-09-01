@@ -19,6 +19,8 @@ Route::prefix('auth')->group(function () {
 Route::middleware('auth:api')->group(function () {
     Route::post('recipes/search', RecipeSearchController::class);
     Route::post('recipes/from-url', [RecipeController::class, 'fromUrl']);
+    Route::post('recipes/preview-url', [RecipeController::class, 'previewUrl']);
+    Route::get('recipes/drafts/{draft}', [RecipeController::class, 'draft']);
     Route::apiResource('recipes', RecipeController::class);
     Route::get('tags', [TagController::class, 'suggestions']);
 });

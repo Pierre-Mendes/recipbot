@@ -4,6 +4,7 @@ import type {
   FromUrlInput,
   PaginatedRecipes,
   Recipe,
+  RecipeDraft,
   RecipeFormInput,
   SearchInput,
   TagCount,
@@ -73,6 +74,39 @@ export async function deleteRecipe(id: string): Promise<void> {
 export async function createRecipeFromUrl(input: FromUrlInput): Promise<Recipe> {
   const { data } = await apiClient.post('/recipes/from-url', input)
   return unwrapRecipe(data)
+}
+
+/**
+ * Coerce a raw draft payload into a safe shape. Like {@link normalizeRecipe},
+ * the list fields must never be null when the review form renders them.
+ */
+function normalizeDraft(raw: Partial<RecipeDraft> & { id: string }): RecipeDraft {
+  return {
+    id: raw.id,
+    title: raw.title ?? '',
+    ingredients: Array.isArray(raw.ingredients) ? raw.ingredients : [],
+    instructions: Array.isArray(raw.instructions) ? raw.instructions : [],
+    tags: Array.isArray(raw.tags) ? raw.tags : [],
+    source_url: raw.source_url ?? null,
+  }
+}
+
+function unwrapDraft(body: unknown): RecipeDraft {
+  const candidate =
+    body && typeof body === 'object' && 'data' in body ? (body as { data: unknown }).data : body
+  if (!candidate || typeof candidate !== 'object' || !('id' in candidate)) {
+    throw new Error('Malformed draft response: missing draft payload')
+  }
+  return normalizeDraft(candidate as Partial<RecipeDraft> & { id: string })
+}
+
+/**
+ * Extract a recipe from a URL into a review draft WITHOUT saving it. Returns
+ * the draft for the user to review and edit before creating the recipe.
+ */
+export async function previewRecipeFromUrl(input: FromUrlInput): Promise<RecipeDraft> {
+  const { data } = await apiClient.post('/recipes/preview-url', input)
+  return unwrapDraft(data)
 }
 
 export async function searchRecipes(input: SearchInput): Promise<PaginatedRecipes> {

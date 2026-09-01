@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { PenLine, Link as LinkIcon, Loader2, Save, DownloadCloud, X } from 'lucide-vue-next'
 
-import type { FromUrlInput, Recipe, RecipeFormInput } from '@/types'
+import type { FromUrlInput, Recipe, RecipeDraft, RecipeFormInput } from '@/types'
 import Card from './ui/Card.vue'
 import CardContent from './ui/CardContent.vue'
 import Input from './ui/Input.vue'
@@ -12,10 +12,16 @@ import { cn } from '@/utils/cn'
 
 const props = withDefaults(
   defineProps<{
-    recipe?: Recipe | null
+    recipe?: Recipe | RecipeDraft | null
     loading?: boolean
+    /**
+     * Overrides the submit button label. Used by the import review flow, where
+     * the form is prefilled with a draft (so `recipe` is set) but the action is
+     * still "create", not "save changes".
+     */
+    submitLabel?: string | null
   }>(),
-  { recipe: null, loading: false },
+  { recipe: null, loading: false, submitLabel: null },
 )
 
 const emit = defineEmits<{
@@ -191,7 +197,7 @@ const textareaClass =
           <Button type="submit" :disabled="props.loading" class="w-full sm:w-auto">
             <Loader2 v-if="props.loading" class="mr-2 h-4 w-4 animate-spin" />
             <Save v-else class="mr-2 h-4 w-4" />
-            {{ props.recipe ? 'Salvar alterações' : 'Criar receita' }}
+            {{ props.submitLabel ?? (props.recipe ? 'Salvar alterações' : 'Criar receita') }}
           </Button>
         </div>
       </form>

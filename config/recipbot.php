@@ -24,4 +24,14 @@ return [
         'tags_default_limit' => (int) env('TAGS_DEFAULT_LIMIT', 10),
         'tags_max_limit' => (int) env('TAGS_MAX_LIMIT', 25),
     ],
+
+    /*
+    | Import drafts are the un-saved result of extracting a recipe from a URL
+    | (later: photo/PDF). They live in the cache store (Redis in production)
+    | until the user reviews and confirms them, so nothing is persisted to the
+    | recipes table before the user approves it.
+    */
+    'drafts' => [
+        'ttl_minutes' => (int) env('RECIPE_DRAFT_TTL_MINUTES', 1440),
+    ],
 ];
