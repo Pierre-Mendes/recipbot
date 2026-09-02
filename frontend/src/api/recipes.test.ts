@@ -8,10 +8,11 @@ import {
   getRecipe,
   listRecipes,
   listTags,
+  previewRecipeFromUrl,
   searchRecipes,
   updateRecipe,
 } from '@/api/recipes'
-import type { Recipe } from '@/types'
+import type { Recipe, RecipeDraft } from '@/types'
 
 const recipe: Recipe = {
   id: 'uuid-1',
@@ -141,6 +142,70 @@ describe('recipes api', () => {
 
     expect(post).toHaveBeenCalledWith('/recipes/from-url', input)
     expect(result).toEqual(recipe)
+  })
+
+  const draft: RecipeDraft = {
+    id: 'draft-1',
+    title: 'Panquecas',
+    ingredients: ['farinha', 'ovo'],
+    instructions: ['misture tudo'],
+    tags: ['cafe'],
+    source_url: 'https://www.tudogostoso.com.br/receita/1.html',
+  }
+
+  it('previewRecipeFromUrl posts to /recipes/preview-url and unwraps the draft envelope', async () => {
+    const post = vi.spyOn(apiClient, 'post').mockResolvedValue({ data: { data: draft } })
+
+    const input = { url: 'https://www.tudogostoso.com.br/receita/1.html', tags: ['cafe'] }
+    const result = await previewRecipeFromUrl(input)
+
+    expect(post).toHaveBeenCalledWith('/recipes/preview-url', input)
+    expect(result).toEqual(draft)
+  })
+
+  it('previewRecipeFromUrl coerces null/missing draft fields into safe defaults so the review form never throws', async () => {
+    // The scraper can return a partial extraction (missing title, null jsonb
+    // list fields). The review form renders ingredients.map(...) etc., so the
+    // API layer normalizes these at the boundary just like normalizeRecipe.
+    vi.spyOn(apiClient, 'post').mockResolvedValue({
+      data: {
+        data: {
+          id: 'draft-1',
+          title: null,
+          ingredients: null,
+          instructions: null,
+          tags: null,
+          source_url: null,
+        },
+      },
+    })
+
+    const result = await previewRecipeFromUrl({ url: 'https://x.test', tags: [] })
+
+    expect(result).toEqual({
+      id: 'draft-1',
+      title: '',
+      ingredients: [],
+      instructions: [],
+      tags: [],
+      source_url: null,
+    })
+  })
+
+  it('previewRecipeFromUrl tolerates an unwrapped draft body (no data envelope)', async () => {
+    vi.spyOn(apiClient, 'post').mockResolvedValue({ data: draft })
+
+    const result = await previewRecipeFromUrl({ url: 'https://x.test', tags: [] })
+
+    expect(result).toEqual(draft)
+  })
+
+  it('previewRecipeFromUrl throws on a response with no usable draft, so callers surface an import error instead of a broken form', async () => {
+    vi.spyOn(apiClient, 'post').mockResolvedValue({ data: { data: null } })
+
+    await expect(previewRecipeFromUrl({ url: 'https://x.test', tags: [] })).rejects.toThrow(
+      'Malformed draft response: missing draft payload',
+    )
   })
 
   it('searchRecipes posts the filters and normalizes pagination to meta', async () => {
