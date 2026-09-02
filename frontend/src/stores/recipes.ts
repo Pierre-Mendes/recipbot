@@ -82,8 +82,13 @@ export const useRecipesStore = defineStore('recipes', () => {
     return recipesApi.previewRecipeFromUrl(input)
   }
 
-  async function importSpreadsheet(file: File): Promise<RecipeDraft> {
-    return recipesApi.importRecipeSpreadsheet(file)
+  // One "Arquivo" upload, dispatched by type: a spreadsheet uses the
+  // structured reader; a PDF or image goes through text/OCR extraction.
+  async function importFile(file: File): Promise<RecipeDraft> {
+    if (file.name.toLowerCase().endsWith('.xlsx')) {
+      return recipesApi.importRecipeSpreadsheet(file)
+    }
+    return recipesApi.importRecipeFile(file)
   }
 
   async function update(id: string, input: Partial<RecipeFormInput>): Promise<Recipe> {
@@ -107,7 +112,7 @@ export const useRecipesStore = defineStore('recipes', () => {
     create,
     createFromUrl,
     previewFromUrl,
-    importSpreadsheet,
+    importFile,
     update,
     remove,
   }
