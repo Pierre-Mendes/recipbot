@@ -5,6 +5,7 @@ import { Pencil, Trash2, Link as LinkIcon, ChefHat, ArrowLeft, StickyNote } from
 
 import { getRecipe } from '@/api/recipes'
 import { parseIngredient } from '@/utils/parseIngredient'
+import { convertIngredient, type UnitSystem } from '@/utils/units'
 import type { Recipe } from '@/types'
 import { useRecipesStore } from '@/stores/recipes'
 import { useToast } from '@/composables/useToast'
@@ -24,9 +25,52 @@ const recipe = ref<Recipe | null>(null)
 const loading = ref(true)
 const notFound = ref(false)
 
-// Parse once per render so the quantity highlight doesn't re-run the parser
-// for every span in the template.
-const parsedIngredients = computed(() => (recipe.value?.ingredients ?? []).map(parseIngredient))
+const UNIT_KEY = 'recipbot:unit-system'
+const UNIT_OPTIONS: { value: UnitSystem; label: string }[] = [
+  { value: 'original', label: 'Original' },
+  { value: 'g', label: 'g' },
+  { value: 'ml', label: 'ml' },
+  { value: 'cup', label: 'xícara' },
+]
+
+function loadUnitSystem(): UnitSystem {
+  try {
+    const saved = localStorage.getItem(UNIT_KEY)
+    if (saved && UNIT_OPTIONS.some((o) => o.value === saved)) {
+      return saved as UnitSystem
+    }
+  } catch {
+    // localStorage can be unavailable (private mode) - fall back to original.
+  }
+  return 'original'
+}
+
+const unitSystem = ref<UnitSystem>(loadUnitSystem())
+
+function setUnitSystem(value: UnitSystem): void {
+  unitSystem.value = value
+  try {
+    localStorage.setItem(UNIT_KEY, value)
+  } catch {
+    // Persisting the preference is best-effort.
+  }
+}
+
+// Each ingredient rendered as { measure, name, converted }. When a target unit
+// is chosen and the line can be converted, show the converted amount (marked
+// approximate); otherwise fall back to the original highlighted measure.
+const displayIngredients = computed(() =>
+  (recipe.value?.ingredients ?? []).map((raw) => {
+    if (unitSystem.value !== 'original') {
+      const converted = convertIngredient(raw, unitSystem.value)
+      if (converted) {
+        return { ...converted, converted: true }
+      }
+    }
+    const { measure, name } = parseIngredient(raw)
+    return { measure, name, converted: false }
+  }),
+)
 
 const id = route.params.id as string
 
@@ -170,21 +214,49 @@ function noteSegments(text: string): { text: string; href: string | null }[] {
               <ChefHat class="h-5 w-5 mr-2 text-primary" />
               Ingredientes
             </h2>
+
+            <div
+              class="inline-flex items-center rounded-lg border border-border bg-muted/40 p-0.5 mb-4"
+              role="group"
+              aria-label="Unidade de exibição"
+            >
+              <button
+                v-for="opt in UNIT_OPTIONS"
+                :key="opt.value"
+                type="button"
+                class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
+                :class="
+                  unitSystem === opt.value
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                "
+                :aria-pressed="unitSystem === opt.value"
+                @click="setUnitSystem(opt.value)"
+              >
+                {{ opt.label }}
+              </button>
+            </div>
+
             <ul class="space-y-3">
-              <li v-for="(parsed, i) in parsedIngredients" :key="i" class="flex items-start">
+              <li v-for="(item, i) in displayIngredients" :key="i" class="flex items-start">
                 <div
                   class="mr-3 mt-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary/20 text-primary"
                 >
                   <span class="h-1.5 w-1.5 rounded-full bg-primary"></span>
                 </div>
                 <span class="text-sm text-card-foreground leading-tight">
-                  <template v-if="parsed.measure">
-                    <span class="font-semibold text-primary tabular-nums">{{
-                      parsed.measure
-                    }}</span>
-                    {{ parsed.name }}
+                  <template v-if="item.measure">
+                    <span class="font-semibold text-primary tabular-nums"
+                      ><span
+                        v-if="item.converted"
+                        class="text-muted-foreground"
+                        title="Valor aproximado"
+                        >≈ </span
+                      >{{ item.measure }}</span
+                    >
+                    {{ item.name }}
                   </template>
-                  <template v-else>{{ parsed.name }}</template>
+                  <template v-else>{{ item.name }}</template>
                 </span>
               </li>
             </ul>
