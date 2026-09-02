@@ -81,6 +81,12 @@ export async function exportRecipe(id: string): Promise<Blob> {
   return data as Blob
 }
 
+/** Download a recipe as a PDF (see {@link exportRecipe} for why we fetch bytes). */
+export async function exportRecipePdf(id: string): Promise<Blob> {
+  const { data } = await apiClient.get(`/recipes/${id}/export-pdf`, { responseType: 'blob' })
+  return data as Blob
+}
+
 export async function createRecipeFromUrl(input: FromUrlInput): Promise<Recipe> {
   const { data } = await apiClient.post('/recipes/from-url', input)
   return unwrapRecipe(data)

@@ -23,6 +23,7 @@ Route::middleware('auth:api')->group(function () {
     Route::post('recipes/import-spreadsheet', [RecipeController::class, 'importSpreadsheet']);
     Route::get('recipes/drafts/{draft}', [RecipeController::class, 'draft']);
     Route::get('recipes/{recipe}/export', [RecipeController::class, 'export']);
+    Route::get('recipes/{recipe}/export-pdf', [RecipeController::class, 'exportPdf']);
     Route::apiResource('recipes', RecipeController::class);
     Route::get('tags', [TagController::class, 'suggestions']);
 });
