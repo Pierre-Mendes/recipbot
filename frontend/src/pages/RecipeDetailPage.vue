@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Pencil, Trash2, Link as LinkIcon, ChefHat, ArrowLeft, StickyNote } from 'lucide-vue-next'
 
 import { getRecipe } from '@/api/recipes'
+import { parseIngredient } from '@/utils/parseIngredient'
 import type { Recipe } from '@/types'
 import { useRecipesStore } from '@/stores/recipes'
 import { useToast } from '@/composables/useToast'
@@ -22,6 +23,10 @@ const { confirm } = useConfirmDialog()
 const recipe = ref<Recipe | null>(null)
 const loading = ref(true)
 const notFound = ref(false)
+
+// Parse once per render so the quantity highlight doesn't re-run the parser
+// for every span in the template.
+const parsedIngredients = computed(() => (recipe.value?.ingredients ?? []).map(parseIngredient))
 
 const id = route.params.id as string
 
@@ -166,13 +171,21 @@ function noteSegments(text: string): { text: string; href: string | null }[] {
               Ingredientes
             </h2>
             <ul class="space-y-3">
-              <li v-for="(ingredient, i) in recipe.ingredients" :key="i" class="flex items-start">
+              <li v-for="(parsed, i) in parsedIngredients" :key="i" class="flex items-start">
                 <div
                   class="mr-3 mt-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary/20 text-primary"
                 >
                   <span class="h-1.5 w-1.5 rounded-full bg-primary"></span>
                 </div>
-                <span class="text-sm text-card-foreground leading-tight">{{ ingredient }}</span>
+                <span class="text-sm text-card-foreground leading-tight">
+                  <template v-if="parsed.measure">
+                    <span class="font-semibold text-primary tabular-nums">{{
+                      parsed.measure
+                    }}</span>
+                    {{ parsed.name }}
+                  </template>
+                  <template v-else>{{ parsed.name }}</template>
+                </span>
               </li>
             </ul>
           </CardContent>
