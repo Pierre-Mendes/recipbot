@@ -10,9 +10,11 @@ import {
   StickyNote,
   Download,
   Loader2,
+  FileSpreadsheet,
+  FileText,
 } from 'lucide-vue-next'
 
-import { getRecipe, exportRecipe } from '@/api/recipes'
+import { getRecipe, exportRecipe, exportRecipePdf } from '@/api/recipes'
 import { parseIngredient } from '@/utils/parseIngredient'
 import { convertIngredient, type UnitSystem } from '@/utils/units'
 import type { Recipe } from '@/types'
@@ -113,24 +115,34 @@ async function handleDelete() {
 }
 
 const exporting = ref(false)
+const exportMenuOpen = ref(false)
 
-async function handleExport() {
+function saveBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
+async function handleExport(format: 'xlsx' | 'pdf') {
   if (!recipe.value) return
+  exportMenuOpen.value = false
   exporting.value = true
   try {
-    const blob = await exportRecipe(recipe.value.id)
-    const slug = recipe.value.title
-      .toLowerCase()
-      .replace(/[^\p{L}\p{N}]+/gu, '-')
-      .replace(/^-|-$/g, '')
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `${slug || 'receita'}.xlsx`
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    URL.revokeObjectURL(url)
+    const blob =
+      format === 'pdf'
+        ? await exportRecipePdf(recipe.value.id)
+        : await exportRecipe(recipe.value.id)
+    const slug =
+      recipe.value.title
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}]+/gu, '-')
+        .replace(/^-|-$/g, '') || 'receita'
+    saveBlob(blob, `${slug}.${format}`)
   } catch {
     toast.error('Não foi possível exportar a receita.')
   } finally {
@@ -216,11 +228,41 @@ function noteSegments(text: string): { text: string; href: string | null }[] {
           {{ recipe.title }}
         </h1>
         <div class="flex gap-2 shrink-0">
-          <Button variant="outline" size="sm" :disabled="exporting" @click="handleExport">
-            <Loader2 v-if="exporting" class="h-4 w-4 mr-2 animate-spin" />
-            <Download v-else class="h-4 w-4 mr-2" />
-            Exportar
-          </Button>
+          <div class="relative">
+            <Button
+              variant="outline"
+              size="sm"
+              :disabled="exporting"
+              @click="exportMenuOpen = !exportMenuOpen"
+            >
+              <Loader2 v-if="exporting" class="h-4 w-4 mr-2 animate-spin" />
+              <Download v-else class="h-4 w-4 mr-2" />
+              Exportar
+            </Button>
+            <template v-if="exportMenuOpen">
+              <div class="fixed inset-0 z-10" @click="exportMenuOpen = false"></div>
+              <div
+                class="absolute right-0 mt-1 z-20 w-44 rounded-md border border-border bg-card shadow-lg py-1 animate-in fade-in zoom-in-95 duration-150"
+              >
+                <button
+                  type="button"
+                  class="flex w-full items-center gap-2 px-3 py-2 text-sm text-left text-foreground hover:bg-muted/60 transition-colors"
+                  @click="handleExport('xlsx')"
+                >
+                  <FileSpreadsheet class="h-4 w-4 text-primary" />
+                  Excel (.xlsx)
+                </button>
+                <button
+                  type="button"
+                  class="flex w-full items-center gap-2 px-3 py-2 text-sm text-left text-foreground hover:bg-muted/60 transition-colors"
+                  @click="handleExport('pdf')"
+                >
+                  <FileText class="h-4 w-4 text-primary" />
+                  PDF
+                </button>
+              </div>
+            </template>
+          </div>
           <RouterLink :to="{ name: 'recipe-edit', params: { id: recipe.id } }">
             <Button variant="outline" size="sm">
               <Pencil class="h-4 w-4 mr-2" />
