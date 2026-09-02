@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Exceptions\RecipeScrapingException;
 use App\Http\Requests\FromUrlRequest;
+use App\Http\Requests\ImportSpreadsheetRequest;
 use App\Http\Requests\IndexRecipesRequest;
 use App\Http\Requests\StoreRecipeRequest;
 use App\Http\Requests\UpdateRecipeRequest;
@@ -17,6 +18,7 @@ use App\Services\RecipeSpreadsheetService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
@@ -102,6 +104,29 @@ class RecipeController extends ApiController
             'tags' => $request->validated('tags') ?? [],
             'source_url' => $request->validated('url'),
         ];
+
+        $id = $drafts->store($user, $draft);
+
+        return $this->success(['id' => $id, ...$draft], 'Recipe draft created', status: 201);
+    }
+
+    /**
+     * Extract a recipe from an uploaded .xlsx (the export/template schema) into
+     * a review draft, WITHOUT persisting it - same review-before-save flow as
+     * URL import, just a different source. Reads the first worksheet for now.
+     */
+    public function importSpreadsheet(ImportSpreadsheetRequest $request, RecipeSpreadsheetService $spreadsheets, RecipeDraftService $drafts): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        /** @var UploadedFile $file */
+        $file = $request->file('file');
+        $draft = $spreadsheets->read($file->getRealPath());
+
+        if ($draft['title'] === '' && $draft['ingredients'] === []) {
+            return response()->json(['message' => 'Could not read a recipe from this spreadsheet.'], 422);
+        }
 
         $id = $drafts->store($user, $draft);
 

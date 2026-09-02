@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Recipe;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Reader\Xlsx as XlsxReader;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -58,6 +59,74 @@ class RecipeSpreadsheetService
         $spreadsheet->disconnectWorksheets();
 
         return $bytes;
+    }
+
+    /**
+     * Read the first worksheet of an .xlsx file back into a draft, using the
+     * same labelled schema write() produces. Fields the file doesn't have come
+     * back empty. (Multi-sheet bulk import is a later step.)
+     *
+     * @return array{title: string, ingredients: list<string>, instructions: list<string>, tags: list<string>, source_url: string|null, notes: string|null}
+     */
+    public function read(string $path): array
+    {
+        $reader = new XlsxReader;
+        $reader->setReadDataOnly(true);
+        $sheet = $reader->load($path)->getSheet(0);
+
+        $draft = [
+            'title' => '',
+            'ingredients' => [],
+            'instructions' => [],
+            'tags' => [],
+            'source_url' => null,
+            'notes' => null,
+        ];
+
+        $section = null; // null | 'ingredients' | 'instructions'
+        $highestRow = $sheet->getHighestDataRow();
+
+        for ($row = 1; $row <= $highestRow; $row++) {
+            $a = trim((string) $sheet->getCell([1, $row])->getValue());
+            $b = trim((string) $sheet->getCell([2, $row])->getValue());
+
+            switch ($a) {
+                case self::LABEL_TITLE:
+                    $draft['title'] = $b;
+                    $section = null;
+                    break;
+                case self::LABEL_SOURCE:
+                    $draft['source_url'] = $b === '' ? null : $b;
+                    $section = null;
+                    break;
+                case self::LABEL_TAGS:
+                    $draft['tags'] = array_values(array_filter(
+                        array_map('trim', explode(',', $b)),
+                        fn (string $t): bool => $t !== ''
+                    ));
+                    $section = null;
+                    break;
+                case self::LABEL_NOTES:
+                    $draft['notes'] = $b === '' ? null : $b;
+                    $section = null;
+                    break;
+                case self::HEADING_INGREDIENTS:
+                    $section = 'ingredients';
+                    break;
+                case self::HEADING_INSTRUCTIONS:
+                    $section = 'instructions';
+                    break;
+                case '':
+                    $section = null;
+                    break;
+                default:
+                    if ($section !== null) {
+                        $draft[$section][] = $a;
+                    }
+            }
+        }
+
+        return $draft;
     }
 
     /**

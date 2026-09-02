@@ -72,6 +72,21 @@ async function handleSubmitFromUrl(input: FromUrlInput) {
   }
 }
 
+async function handleSubmitFile(file: File) {
+  loading.value = true
+  error.value = null
+  try {
+    // Like URL import: a spreadsheet becomes a draft to review, not a save.
+    reviewDraft.value = await store.importSpreadsheet(file)
+    toast.success('Planilha lida. Revise e ajuste antes de criar.')
+  } catch {
+    error.value = 'Não foi possível ler uma receita desta planilha.'
+    toast.error(error.value)
+  } finally {
+    loading.value = false
+  }
+}
+
 function discardDraft() {
   reviewDraft.value = null
   error.value = null
@@ -147,6 +162,7 @@ function goBack() {
       :submit-label="reviewDraft ? 'Criar receita' : null"
       @submit="handleSubmit"
       @submit-from-url="handleSubmitFromUrl"
+      @submit-file="handleSubmitFile"
     />
   </div>
 </template>

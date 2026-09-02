@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { PenLine, Link as LinkIcon, Loader2, Save, DownloadCloud, X } from 'lucide-vue-next'
+import {
+  PenLine,
+  Link as LinkIcon,
+  Loader2,
+  Save,
+  DownloadCloud,
+  X,
+  FileSpreadsheet,
+} from 'lucide-vue-next'
 
 import type { FromUrlInput, Recipe, RecipeDraft, RecipeFormInput } from '@/types'
 import Card from './ui/Card.vue'
@@ -28,9 +36,22 @@ const props = withDefaults(
 const emit = defineEmits<{
   submit: [input: RecipeFormInput]
   submitFromUrl: [input: FromUrlInput]
+  submitFile: [file: File]
 }>()
 
-const mode = ref<'manual' | 'url'>('manual')
+const mode = ref<'manual' | 'url' | 'file'>('manual')
+const importFile = ref<File | null>(null)
+
+function onFileChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  importFile.value = input.files?.[0] ?? null
+}
+
+function handleFileSubmit() {
+  if (importFile.value) {
+    emit('submitFile', importFile.value)
+  }
+}
 
 const title = ref(props.recipe?.title ?? '')
 const ingredients = ref<string[]>(props.recipe?.ingredients ? [...props.recipe.ingredients] : [])
@@ -143,6 +164,19 @@ const textareaClass =
         <LinkIcon class="h-4 w-4" />
         Importar de URL
       </button>
+      <button
+        type="button"
+        class="flex flex-1 items-center justify-center gap-2 py-4 text-sm font-medium transition-colors"
+        :class="
+          mode === 'file'
+            ? 'border-b-2 border-primary text-primary'
+            : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
+        "
+        @click="mode = 'file'"
+      >
+        <FileSpreadsheet class="h-4 w-4" />
+        Arquivo
+      </button>
     </div>
 
     <CardContent class="pt-6">
@@ -229,7 +263,7 @@ const textareaClass =
         </div>
       </form>
 
-      <form v-else class="space-y-6" @submit.prevent="handleUrlSubmit">
+      <form v-else-if="mode === 'url'" class="space-y-6" @submit.prevent="handleUrlSubmit">
         <div class="space-y-2">
           <Label for="url">URL da Receita</Label>
           <div class="relative">
@@ -288,6 +322,31 @@ const textareaClass =
             <Loader2 v-if="props.loading" class="mr-2 h-4 w-4 animate-spin" />
             <DownloadCloud v-else class="mr-2 h-4 w-4" />
             Importar receita
+          </Button>
+        </div>
+      </form>
+
+      <form v-else class="space-y-6" @submit.prevent="handleFileSubmit">
+        <div class="space-y-2">
+          <Label for="file">Planilha (.xlsx)</Label>
+          <input
+            id="file"
+            type="file"
+            accept=".xlsx"
+            class="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary hover:file:bg-primary/20 transition-colors"
+            @change="onFileChange"
+          />
+          <p class="text-xs text-muted-foreground mt-1.5 flex items-center">
+            <span class="inline-block w-1.5 h-1.5 rounded-full bg-primary/60 mr-1.5"></span>
+            Use o mesmo formato do arquivo exportado por uma receita.
+          </p>
+        </div>
+
+        <div class="pt-2">
+          <Button type="submit" :disabled="props.loading || !importFile" class="w-full sm:w-auto">
+            <Loader2 v-if="props.loading" class="mr-2 h-4 w-4 animate-spin" />
+            <FileSpreadsheet v-else class="mr-2 h-4 w-4" />
+            Importar planilha
           </Button>
         </div>
       </form>

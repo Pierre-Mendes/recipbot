@@ -20,6 +20,7 @@ Route::middleware('auth:api')->group(function () {
     Route::post('recipes/search', RecipeSearchController::class);
     Route::post('recipes/from-url', [RecipeController::class, 'fromUrl']);
     Route::post('recipes/preview-url', [RecipeController::class, 'previewUrl']);
+    Route::post('recipes/import-spreadsheet', [RecipeController::class, 'importSpreadsheet']);
     Route::get('recipes/drafts/{draft}', [RecipeController::class, 'draft']);
     Route::get('recipes/{recipe}/export', [RecipeController::class, 'export']);
     Route::apiResource('recipes', RecipeController::class);

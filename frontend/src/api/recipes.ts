@@ -119,6 +119,17 @@ export async function previewRecipeFromUrl(input: FromUrlInput): Promise<RecipeD
   return unwrapDraft(data)
 }
 
+/**
+ * Upload an .xlsx (the export/template format) and get back a review draft -
+ * same review-before-save flow as URL import, from a file instead.
+ */
+export async function importRecipeSpreadsheet(file: File): Promise<RecipeDraft> {
+  const form = new FormData()
+  form.append('file', file)
+  const { data } = await apiClient.post('/recipes/import-spreadsheet', form)
+  return unwrapDraft(data)
+}
+
 export async function searchRecipes(input: SearchInput): Promise<PaginatedRecipes> {
   const { data } = await apiClient.post<ApiResponse<Recipe[]>>('/recipes/search', input)
   return {

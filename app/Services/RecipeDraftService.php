@@ -16,7 +16,7 @@ class RecipeDraftService
     /**
      * Persist a draft and return its opaque id.
      *
-     * @param  array{title: string, ingredients: list<string>, instructions: list<string>, tags: list<string>, source_url: string|null}  $data
+     * @param  array{title: string, ingredients: list<string>, instructions: list<string>, tags: list<string>, source_url: string|null, notes?: string|null}  $data
      */
     public function store(User $user, array $data): string
     {
@@ -30,11 +30,11 @@ class RecipeDraftService
     /**
      * Fetch a draft, or null if it never existed or has expired.
      *
-     * @return array{title: string, ingredients: list<string>, instructions: list<string>, tags: list<string>, source_url: string|null}|null
+     * @return array{title: string, ingredients: list<string>, instructions: list<string>, tags: list<string>, source_url: string|null, notes?: string|null}|null
      */
     public function find(User $user, string $id): ?array
     {
-        /** @var array{title: string, ingredients: list<string>, instructions: list<string>, tags: list<string>, source_url: string|null}|null $draft */
+        /** @var array{title: string, ingredients: list<string>, instructions: list<string>, tags: list<string>, source_url: string|null, notes?: string|null}|null $draft */
         $draft = Cache::get($this->key($user, $id));
 
         return $draft;

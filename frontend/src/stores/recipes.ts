@@ -82,6 +82,10 @@ export const useRecipesStore = defineStore('recipes', () => {
     return recipesApi.previewRecipeFromUrl(input)
   }
 
+  async function importSpreadsheet(file: File): Promise<RecipeDraft> {
+    return recipesApi.importRecipeSpreadsheet(file)
+  }
+
   async function update(id: string, input: Partial<RecipeFormInput>): Promise<Recipe> {
     return recipesApi.updateRecipe(id, input)
   }
@@ -103,6 +107,7 @@ export const useRecipesStore = defineStore('recipes', () => {
     create,
     createFromUrl,
     previewFromUrl,
+    importSpreadsheet,
     update,
     remove,
   }
