@@ -71,6 +71,16 @@ export async function deleteRecipe(id: string): Promise<void> {
   await apiClient.delete(`/recipes/${id}`)
 }
 
+/**
+ * Download a recipe as an .xlsx workbook. The endpoint is JWT-protected, so we
+ * fetch the bytes through the authenticated client (a plain link can't send the
+ * Authorization header) and return the Blob for the caller to save.
+ */
+export async function exportRecipe(id: string): Promise<Blob> {
+  const { data } = await apiClient.get(`/recipes/${id}/export`, { responseType: 'blob' })
+  return data as Blob
+}
+
 export async function createRecipeFromUrl(input: FromUrlInput): Promise<Recipe> {
   const { data } = await apiClient.post('/recipes/from-url', input)
   return unwrapRecipe(data)

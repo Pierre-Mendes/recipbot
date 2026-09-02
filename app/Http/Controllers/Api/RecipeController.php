@@ -13,9 +13,12 @@ use App\Models\User;
 use App\Services\RecipeDraftService;
 use App\Services\RecipeScraperService;
 use App\Services\RecipeService;
+use App\Services\RecipeSpreadsheetService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 
 class RecipeController extends ApiController
 {
@@ -120,6 +123,24 @@ class RecipeController extends ApiController
         }
 
         return $this->success(['id' => $draft, ...$data]);
+    }
+
+    /**
+     * Export a single recipe as an .xlsx workbook (owner-only). Uses the same
+     * schema as the import template, so an exported file can be edited and
+     * imported back.
+     */
+    public function export(Recipe $recipe, RecipeSpreadsheetService $spreadsheets): Response
+    {
+        Gate::authorize('view', $recipe);
+
+        $bytes = $spreadsheets->write([$recipe]);
+        $filename = (Str::slug($recipe->title) ?: 'receita').'.xlsx';
+
+        return response($bytes, 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
     }
 
     /**
