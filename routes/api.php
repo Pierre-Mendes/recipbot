@@ -21,6 +21,7 @@ Route::middleware('auth:api')->group(function () {
     Route::post('recipes/from-url', [RecipeController::class, 'fromUrl']);
     Route::post('recipes/preview-url', [RecipeController::class, 'previewUrl']);
     Route::get('recipes/drafts/{draft}', [RecipeController::class, 'draft']);
+    Route::get('recipes/{recipe}/export', [RecipeController::class, 'export']);
     Route::apiResource('recipes', RecipeController::class);
     Route::get('tags', [TagController::class, 'suggestions']);
 });
