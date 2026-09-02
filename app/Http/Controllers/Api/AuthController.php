@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
+use App\Http\Requests\UpdatePasswordRequest;
+use App\Http\Requests\UpdateProfileRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Database\QueryException;
@@ -98,6 +100,47 @@ class AuthController extends ApiController
     public function me(Request $request): JsonResponse
     {
         return $this->success(new UserResource($request->user()));
+    }
+
+    /**
+     * Update the authenticated user's name and/or email.
+     */
+    public function updateProfile(UpdateProfileRequest $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        try {
+            $user->update($request->validated());
+        } catch (QueryException $e) {
+            if ($e->getCode() === self::UNIQUE_VIOLATION) {
+                // Same race as registration: the DB's unique index is the real
+                // guard, so translate a concurrent collision into a validation
+                // error rather than a 500.
+                throw ValidationException::withMessages([
+                    'email' => ['An account with this email already exists'],
+                ]);
+            }
+
+            throw $e;
+        }
+
+        return $this->success(new UserResource($user), 'Profile updated successfully');
+    }
+
+    /**
+     * Change the authenticated user's password. The request validates the
+     * current password before this runs.
+     */
+    public function updatePassword(UpdatePasswordRequest $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        // The 'password' cast hashes this on save.
+        $user->update(['password' => $request->validated('password')]);
+
+        return $this->success(null, 'Password updated successfully');
     }
 
     private function respondWithToken(string $token): JsonResponse
