@@ -14,6 +14,7 @@ export interface Recipe {
   instructions?: string[] | null
   tags: string[]
   source_url: string | null
+  notes?: string | null
   created_at: string
   updated_at: string
 }
@@ -63,6 +64,7 @@ export interface RecipeFormInput {
   instructions: string[]
   tags: string[]
   source_url?: string | null
+  notes?: string | null
 }
 
 export interface FromUrlInput {
@@ -82,6 +84,7 @@ export interface RecipeDraft {
   instructions: string[]
   tags: string[]
   source_url: string | null
+  notes?: string | null
 }
 
 export interface SearchInput {

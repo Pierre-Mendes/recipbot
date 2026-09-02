@@ -22,6 +22,7 @@ class RecipeResource extends JsonResource
             'instructions' => $this->instructions,
             'tags' => $this->tags,
             'source_url' => $this->source_url,
+            'notes' => $this->notes,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
