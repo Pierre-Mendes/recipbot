@@ -15,6 +15,7 @@ use App\Services\RecipeDraftService;
 use App\Services\RecipeScraperService;
 use App\Services\RecipeService;
 use App\Services\RecipeSpreadsheetService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -164,6 +165,23 @@ class RecipeController extends ApiController
 
         return response($bytes, 200, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
+    }
+
+    /**
+     * Export a single recipe as a PDF (owner-only) - a printable "cookbook
+     * page" rendered from a Blade view.
+     */
+    public function exportPdf(Recipe $recipe): Response
+    {
+        Gate::authorize('view', $recipe);
+
+        $pdf = Pdf::loadView('pdf.recipe', ['recipe' => $recipe]);
+        $filename = (Str::slug($recipe->title) ?: 'receita').'.pdf';
+
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ]);
     }
