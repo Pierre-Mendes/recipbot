@@ -77,6 +77,66 @@ describe('RecipeForm', () => {
     expect(screen.getByRole('button', { name: 'Salvar alterações' })).toBeInTheDocument()
   })
 
+  it('prefills from an import draft and labels the button "Criar receita" via submitLabel', () => {
+    // The import review flow passes the extracted draft as `recipe` (so the
+    // form is prefilled and the URL tab hidden) but overrides the label,
+    // because the action is still a create, not "save changes".
+    render(RecipeForm, {
+      props: {
+        recipe: {
+          id: 'draft-1',
+          title: 'Churros',
+          ingredients: ['agua', 'farinha'],
+          instructions: ['Ferva a agua', 'Frite'],
+          tags: ['doce'],
+          source_url: 'https://www.tudogostoso.com.br/receita/1-churros.html',
+        },
+        submitLabel: 'Criar receita',
+      },
+    })
+
+    expect(screen.queryByRole('button', { name: 'Importar de URL' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Salvar alterações' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Criar receita' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Título')).toHaveValue('Churros')
+    expect(screen.getByLabelText('Modo de Preparo (um passo por linha)')).toHaveValue(
+      'Ferva a agua\nFrite',
+    )
+  })
+
+  it('re-hydrates the fields when a draft arrives after mount (import review)', async () => {
+    // The import review flow mounts the form empty (URL tab), then swaps in the
+    // extracted draft in place. The fields must populate on that transition, not
+    // only when the recipe is present at mount.
+    const { rerender } = render(RecipeForm, { props: { recipe: null } })
+
+    expect(screen.getByLabelText('Título')).toHaveValue('')
+
+    await rerender({
+      recipe: {
+        id: 'draft-1',
+        title: 'Churros',
+        ingredients: ['agua', 'farinha'],
+        instructions: ['Ferva a agua', 'Frite'],
+        tags: ['doce'],
+        source_url: 'https://www.tudogostoso.com.br/receita/1-churros.html',
+      },
+      submitLabel: 'Criar receita',
+    })
+
+    expect(screen.getByLabelText('Título')).toHaveValue('Churros')
+    expect(screen.getByLabelText('Ingredientes (um por linha)')).toHaveValue('agua\nfarinha')
+    expect(screen.getByLabelText('Modo de Preparo (um passo por linha)')).toHaveValue(
+      'Ferva a agua\nFrite',
+    )
+    expect(screen.getByText('doce')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Criar receita' })).toBeInTheDocument()
+
+    // Discarding the draft (recipe -> null) clears the fields back to empty.
+    await rerender({ recipe: null, submitLabel: null })
+    expect(screen.getByLabelText('Título')).toHaveValue('')
+  })
+
   it('fills the fields from an already-loaded recipe at mount', () => {
     render(RecipeForm, {
       props: {

@@ -5,7 +5,7 @@ import { ArrowLeft } from 'lucide-vue-next'
 
 import RecipeForm from '@/components/RecipeForm.vue'
 import { getRecipe } from '@/api/recipes'
-import type { FromUrlInput, Recipe, RecipeFormInput } from '@/types'
+import type { FromUrlInput, Recipe, RecipeDraft, RecipeFormInput } from '@/types'
 import { useRecipesStore } from '@/stores/recipes'
 import { useToast } from '@/composables/useToast'
 import Button from '@/components/ui/Button.vue'
@@ -16,6 +16,10 @@ const store = useRecipesStore()
 const toast = useToast()
 
 const recipe = ref<Recipe | null>(null)
+// Draft extracted from a URL, awaiting the user's review. When set, the form
+// renders prefilled with it - importing produces a draft to confirm, never a
+// saved recipe.
+const reviewDraft = ref<RecipeDraft | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 // Kept separate from `error` (used for submit failures): a failed initial load
@@ -56,15 +60,21 @@ async function handleSubmitFromUrl(input: FromUrlInput) {
   loading.value = true
   error.value = null
   try {
-    const saved = await store.createFromUrl(input)
-    toast.success('Receita importada com sucesso.')
-    router.push({ name: 'recipe-detail', params: { id: saved.id } })
+    // Import no longer saves: it extracts a draft the user reviews and edits
+    // before the recipe is actually created (through handleSubmit).
+    reviewDraft.value = await store.previewFromUrl(input)
+    toast.success('Receita extraída. Revise e ajuste antes de criar.')
   } catch {
     error.value = 'Não foi possível importar a receita desta URL.'
     toast.error(error.value)
   } finally {
     loading.value = false
   }
+}
+
+function discardDraft() {
+  reviewDraft.value = null
+  error.value = null
 }
 
 function goBack() {
@@ -90,15 +100,30 @@ function goBack() {
 
     <div class="mb-8">
       <h1 class="text-3xl font-bold tracking-tight text-foreground">
-        {{ recipeId ? 'Editar Receita' : 'Nova Receita' }}
+        {{ recipeId ? 'Editar Receita' : reviewDraft ? 'Revisar Importação' : 'Nova Receita' }}
       </h1>
       <p class="text-muted-foreground mt-1">
         {{
           recipeId
             ? 'Atualize os detalhes da sua receita.'
-            : 'Crie uma nova receita manualmente ou importe de uma URL.'
+            : reviewDraft
+              ? 'Confira o que foi extraído, ajuste o que precisar e crie a receita.'
+              : 'Crie uma nova receita manualmente ou importe de uma URL.'
         }}
       </p>
+    </div>
+
+    <div
+      v-if="reviewDraft"
+      class="mb-6 flex items-start justify-between gap-4 rounded-md border border-primary/20 bg-primary/10 p-4 text-sm"
+    >
+      <p class="text-foreground/80">
+        Estes dados vieram da importação e ainda <strong>não foram salvos</strong>. Revise antes de
+        criar.
+      </p>
+      <Button variant="ghost" size="sm" class="shrink-0 -mr-2 -my-1" @click="discardDraft">
+        Descartar
+      </Button>
     </div>
 
     <div
@@ -117,8 +142,9 @@ function goBack() {
 
     <RecipeForm
       v-else-if="!loadError"
-      :recipe="recipe"
+      :recipe="recipe ?? reviewDraft"
       :loading="loading"
+      :submit-label="reviewDraft ? 'Criar receita' : null"
       @submit="handleSubmit"
       @submit-from-url="handleSubmitFromUrl"
     />

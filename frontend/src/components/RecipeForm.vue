@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { PenLine, Link as LinkIcon, Loader2, Save, DownloadCloud, X } from 'lucide-vue-next'
 
-import type { FromUrlInput, Recipe, RecipeFormInput } from '@/types'
+import type { FromUrlInput, Recipe, RecipeDraft, RecipeFormInput } from '@/types'
 import Card from './ui/Card.vue'
 import CardContent from './ui/CardContent.vue'
 import Input from './ui/Input.vue'
@@ -12,10 +12,16 @@ import { cn } from '@/utils/cn'
 
 const props = withDefaults(
   defineProps<{
-    recipe?: Recipe | null
+    recipe?: Recipe | RecipeDraft | null
     loading?: boolean
+    /**
+     * Overrides the submit button label. Used by the import review flow, where
+     * the form is prefilled with a draft (so `recipe` is set) but the action is
+     * still "create", not "save changes".
+     */
+    submitLabel?: string | null
   }>(),
-  { recipe: null, loading: false },
+  { recipe: null, loading: false, submitLabel: null },
 )
 
 const emit = defineEmits<{
@@ -34,6 +40,27 @@ const importUrl = ref('')
 // Tag Chips Logic
 const tags = ref<string[]>(props.recipe?.tags ? [...props.recipe.tags] : [])
 const tagInput = ref('')
+
+// The fields above are seeded from `recipe` at setup. That covers the edit
+// flow (the form only mounts once the recipe is loaded) but NOT the import
+// review flow, where the form is already mounted and `recipe` changes from
+// null to the extracted draft in place. Re-hydrate whenever `recipe` changes
+// so the review screen actually shows what was imported (and clears back to
+// empty when the draft is discarded). The parent only swaps `recipe` on real
+// transitions, so this never clobbers in-progress edits.
+watch(
+  () => props.recipe,
+  (recipe) => {
+    title.value = recipe?.title ?? ''
+    ingredientsText.value = recipe?.ingredients?.join('\n') ?? ''
+    instructionsText.value = recipe?.instructions?.join('\n') ?? ''
+    sourceUrl.value = recipe?.source_url ?? ''
+    tags.value = recipe?.tags ? [...recipe.tags] : []
+    if (recipe) {
+      mode.value = 'manual'
+    }
+  },
+)
 
 function handleTagInput(e: KeyboardEvent) {
   if (e.key === ',' || e.key === 'Enter') {
@@ -191,7 +218,7 @@ const textareaClass =
           <Button type="submit" :disabled="props.loading" class="w-full sm:w-auto">
             <Loader2 v-if="props.loading" class="mr-2 h-4 w-4 animate-spin" />
             <Save v-else class="mr-2 h-4 w-4" />
-            {{ props.recipe ? 'Salvar alterações' : 'Criar receita' }}
+            {{ props.submitLabel ?? (props.recipe ? 'Salvar alterações' : 'Criar receita') }}
           </Button>
         </div>
       </form>

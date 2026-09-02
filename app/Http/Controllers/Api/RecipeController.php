@@ -10,9 +10,11 @@ use App\Http\Requests\UpdateRecipeRequest;
 use App\Http\Resources\RecipeResource;
 use App\Models\Recipe;
 use App\Models\User;
+use App\Services\RecipeDraftService;
 use App\Services\RecipeScraperService;
 use App\Services\RecipeService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
 class RecipeController extends ApiController
@@ -71,6 +73,53 @@ class RecipeController extends ApiController
         ]);
 
         return $this->success(new RecipeResource($recipe), 'Recipe created successfully', status: 201);
+    }
+
+    /**
+     * Extract a recipe from a whitelisted URL into a review draft, WITHOUT
+     * persisting it. The draft is cached (Redis) and returned so the user can
+     * review and edit it before creating the recipe through the normal store
+     * endpoint - importing never writes a recipe directly.
+     */
+    public function previewUrl(FromUrlRequest $request, RecipeScraperService $scraper, RecipeDraftService $drafts): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        try {
+            $extracted = $scraper->extract($request->validated('url'));
+        } catch (RecipeScrapingException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        $draft = [
+            'title' => $extracted['title'],
+            'ingredients' => $extracted['ingredients'],
+            'instructions' => $extracted['instructions'],
+            'tags' => $request->validated('tags') ?? [],
+            'source_url' => $request->validated('url'),
+        ];
+
+        $id = $drafts->store($user, $draft);
+
+        return $this->success(['id' => $id, ...$draft], 'Recipe draft created', status: 201);
+    }
+
+    /**
+     * Re-fetch a cached import draft so the review form survives a reload.
+     */
+    public function draft(Request $request, RecipeDraftService $drafts, string $draft): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        $data = $drafts->find($user, $draft);
+
+        if ($data === null) {
+            return response()->json(['message' => 'Draft not found or expired.'], 404);
+        }
+
+        return $this->success(['id' => $draft, ...$data]);
     }
 
     /**

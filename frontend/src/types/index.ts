@@ -70,6 +70,20 @@ export interface FromUrlInput {
   tags: string[]
 }
 
+/**
+ * An un-saved recipe extracted from a URL (later: photo/PDF). Importing
+ * returns one of these for the user to review and edit; nothing is persisted
+ * until they confirm through the normal create flow.
+ */
+export interface RecipeDraft {
+  id: string
+  title: string
+  ingredients: string[]
+  instructions: string[]
+  tags: string[]
+  source_url: string | null
+}
+
 export interface SearchInput {
   tags?: string[]
   query?: string
