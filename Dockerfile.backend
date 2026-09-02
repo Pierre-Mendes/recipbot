@@ -13,7 +13,8 @@ RUN apk add --no-cache \
     libwebp-dev \
     freetype-dev \
     icu-dev \
-    icu-libs
+    icu-libs \
+    libzip-dev
 
 # Install PHP extensions
 # Note: pdo, ctype, json, mbstring, openssl, posix, tokenizer, xml ship built-in
@@ -24,7 +25,8 @@ RUN docker-php-ext-install \
     bcmath \
     pcntl \
     gd \
-    intl
+    intl \
+    zip
 
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer

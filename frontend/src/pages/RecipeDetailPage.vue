@@ -1,9 +1,18 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Pencil, Trash2, Link as LinkIcon, ChefHat, ArrowLeft, StickyNote } from 'lucide-vue-next'
+import {
+  Pencil,
+  Trash2,
+  Link as LinkIcon,
+  ChefHat,
+  ArrowLeft,
+  StickyNote,
+  Download,
+  Loader2,
+} from 'lucide-vue-next'
 
-import { getRecipe } from '@/api/recipes'
+import { getRecipe, exportRecipe } from '@/api/recipes'
 import { parseIngredient } from '@/utils/parseIngredient'
 import { convertIngredient, type UnitSystem } from '@/utils/units'
 import type { Recipe } from '@/types'
@@ -103,6 +112,32 @@ async function handleDelete() {
   }
 }
 
+const exporting = ref(false)
+
+async function handleExport() {
+  if (!recipe.value) return
+  exporting.value = true
+  try {
+    const blob = await exportRecipe(recipe.value.id)
+    const slug = recipe.value.title
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, '-')
+      .replace(/^-|-$/g, '')
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${slug || 'receita'}.xlsx`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+  } catch {
+    toast.error('Não foi possível exportar a receita.')
+  } finally {
+    exporting.value = false
+  }
+}
+
 function goBack() {
   router.push({ name: 'recipes' })
 }
@@ -181,6 +216,11 @@ function noteSegments(text: string): { text: string; href: string | null }[] {
           {{ recipe.title }}
         </h1>
         <div class="flex gap-2 shrink-0">
+          <Button variant="outline" size="sm" :disabled="exporting" @click="handleExport">
+            <Loader2 v-if="exporting" class="h-4 w-4 mr-2 animate-spin" />
+            <Download v-else class="h-4 w-4 mr-2" />
+            Exportar
+          </Button>
           <RouterLink :to="{ name: 'recipe-edit', params: { id: recipe.id } }">
             <Button variant="outline" size="sm">
               <Pencil class="h-4 w-4 mr-2" />
