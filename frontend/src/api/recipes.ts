@@ -136,6 +136,17 @@ export async function importRecipeSpreadsheet(file: File): Promise<RecipeDraft> 
   return unwrapDraft(data)
 }
 
+/**
+ * Upload a PDF or photo and get back a review draft. PDFs with a text layer
+ * are read directly; images go through OCR - both land on the review screen.
+ */
+export async function importRecipeFile(file: File): Promise<RecipeDraft> {
+  const form = new FormData()
+  form.append('file', file)
+  const { data } = await apiClient.post('/recipes/import-file', form)
+  return unwrapDraft(data)
+}
+
 export async function searchRecipes(input: SearchInput): Promise<PaginatedRecipes> {
   const { data } = await apiClient.post<ApiResponse<Recipe[]>>('/recipes/search', input)
   return {

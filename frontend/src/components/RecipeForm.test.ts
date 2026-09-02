@@ -83,11 +83,11 @@ describe('RecipeForm', () => {
     const file = new File(['x'], 'receita.xlsx', {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     })
-    const input = screen.getByLabelText('Planilha (.xlsx)') as HTMLInputElement
+    const input = screen.getByLabelText('Arquivo (planilha, PDF ou foto)') as HTMLInputElement
     // jsdom's input.files is read-only, so define it before firing change.
     Object.defineProperty(input, 'files', { value: [file], configurable: true })
     await fireEvent.change(input)
-    await fireEvent.click(screen.getByRole('button', { name: 'Importar planilha' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Importar arquivo' }))
 
     expect(emitted().submitFile[0]).toEqual([file])
   })

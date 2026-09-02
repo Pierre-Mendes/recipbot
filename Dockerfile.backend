@@ -14,7 +14,9 @@ RUN apk add --no-cache \
     freetype-dev \
     icu-dev \
     icu-libs \
-    libzip-dev
+    libzip-dev \
+    tesseract-ocr \
+    tesseract-ocr-data-por
 
 # Install PHP extensions
 # Note: pdo, ctype, json, mbstring, openssl, posix, tokenizer, xml ship built-in
