@@ -76,11 +76,11 @@ async function handleSubmitFile(file: File) {
   loading.value = true
   error.value = null
   try {
-    // Like URL import: a spreadsheet becomes a draft to review, not a save.
-    reviewDraft.value = await store.importSpreadsheet(file)
-    toast.success('Planilha lida. Revise e ajuste antes de criar.')
+    // Like URL import: a file becomes a draft to review, not a save.
+    reviewDraft.value = await store.importFile(file)
+    toast.success('Arquivo lido. Revise e ajuste antes de criar.')
   } catch {
-    error.value = 'Não foi possível ler uma receita desta planilha.'
+    error.value = 'Não foi possível ler uma receita deste arquivo.'
     toast.error(error.value)
   } finally {
     loading.value = false

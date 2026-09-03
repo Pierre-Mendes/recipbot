@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Exceptions\RecipeScrapingException;
 use App\Http\Requests\FromUrlRequest;
+use App\Http\Requests\ImportFileRequest;
 use App\Http\Requests\ImportSpreadsheetRequest;
 use App\Http\Requests\IndexRecipesRequest;
 use App\Http\Requests\StoreRecipeRequest;
@@ -15,6 +16,7 @@ use App\Services\RecipeDraftService;
 use App\Services\RecipeScraperService;
 use App\Services\RecipeService;
 use App\Services\RecipeSpreadsheetService;
+use App\Services\RecipeTextImportService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -127,6 +129,30 @@ class RecipeController extends ApiController
 
         if ($draft['title'] === '' && $draft['ingredients'] === []) {
             return response()->json(['message' => 'Could not read a recipe from this spreadsheet.'], 422);
+        }
+
+        $id = $drafts->store($user, $draft);
+
+        return $this->success(['id' => $id, ...$draft], 'Recipe draft created', status: 201);
+    }
+
+    /**
+     * Extract a recipe from an uploaded PDF or photo (via text/OCR) into a
+     * review draft, WITHOUT persisting it - same review-before-save flow.
+     */
+    public function importFile(ImportFileRequest $request, RecipeTextImportService $extractor, RecipeDraftService $drafts): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        /** @var UploadedFile $file */
+        $file = $request->file('file');
+
+        $text = $extractor->extractText($file);
+        $draft = $extractor->parse($text);
+
+        if ($draft['title'] === '' && $draft['ingredients'] === []) {
+            return response()->json(['message' => 'Could not read a recipe from this file.'], 422);
         }
 
         $id = $drafts->store($user, $draft);
