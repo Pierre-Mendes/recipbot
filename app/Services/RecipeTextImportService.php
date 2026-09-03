@@ -36,9 +36,10 @@ class RecipeTextImportService
             return trim($document->getText());
         }
 
-        // lang() is a magic __call option on the OCR wrapper, invisible to static analysis.
+        // Portuguese model (the app is pt-BR); lang() is a magic __call option
+        // on the OCR wrapper, invisible to static analysis.
         /** @phpstan-ignore method.notFound */
-        return trim((new TesseractOCR($file->getRealPath()))->lang('por', 'eng')->run());
+        return trim((new TesseractOCR($file->getRealPath()))->lang('por')->run());
     }
 
     /**
