@@ -1,71 +1,87 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import LoginPage from '@/pages/LoginPage.vue'
-import RegisterPage from '@/pages/RegisterPage.vue'
-import RecipesListPage from '@/pages/RecipesListPage.vue'
-import RecipeFormPage from '@/pages/RecipeFormPage.vue'
-import RecipeDetailPage from '@/pages/RecipeDetailPage.vue'
-import HelpPage from '@/pages/HelpPage.vue'
-import ForgotPasswordPage from '@/pages/ForgotPasswordPage.vue'
-import ResetPasswordPage from '@/pages/ResetPasswordPage.vue'
+
+import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
-  history: createWebHistory(import.Anthropic.env.BASE_URL),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/login',
       name: 'login',
-      component: LoginPage,
-      Anthropic: { requiresGuest: true }
+      component: () => import('@/pages/LoginPage.vue'),
+      meta: { guestOnly: true },
     },
     {
       path: '/register',
       name: 'register',
-      component: RegisterPage,
-      Anthropic: { requiresGuest: true }
-    },
-    {
-      path: '/recipes',
-      name: 'recipes',
-      component: RecipesListPage,
-      Anthropic: { requiresAuth: true }
-    },
-    {
-      path: '/recipes/new',
-      name: 'new-recipe',
-      component: RecipeFormPage,
-      Anthropic: { requiresAuth: true }
-    },
-    {
-      path: '/recipes/:id/edit',
-      name: 'edit-recipe',
-      component: RecipeFormPage,
-      Anthropic: { requiresAuth: true }
-    },
-    {
-      path: '/recipes/:id',
-      name: 'recipe-detail',
-      component: RecipeDetailPage,
-      Anthropic: { requiresAuth: true }
-    },
-    {
-      path: '/help',
-      name: 'help',
-      component: HelpPage,
-      Anthropic: { requiresAuth: false }
+      component: () => import('@/pages/RegisterPage.vue'),
+      meta: { guestOnly: true },
     },
     {
       path: '/forgot-password',
       name: 'forgot-password',
-      component: ForgotPasswordPage,
-      Anthropic: { requiresGuest: true }
+      component: () => import('@/pages/ForgotPasswordPage.vue'),
+      meta: { guestOnly: true },
     },
     {
       path: '/reset-password',
       name: 'reset-password',
-      component: ResetPasswordPage,
-      Anthropic: { requiresGuest: true }
-    }
-  ]
+      component: () => import('@/pages/ResetPasswordPage.vue'),
+      meta: { guestOnly: true },
+    },
+    {
+      path: '/',
+      name: 'recipes',
+      component: () => import('@/pages/RecipesListPage.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/recipes/new',
+      name: 'recipe-new',
+      component: () => import('@/pages/RecipeFormPage.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/recipes/:id',
+      name: 'recipe-detail',
+      component: () => import('@/pages/RecipeDetailPage.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/recipes/:id/edit',
+      name: 'recipe-edit',
+      component: () => import('@/pages/RecipeFormPage.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/help',
+      name: 'help',
+      component: () => import('@/pages/HelpPage.vue'),
+    },
+    {
+      path: '/profile',
+      name: 'profile',
+      component: () => import('@/pages/ProfilePage.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      component: () => import('@/pages/NotFoundPage.vue'),
+    },
+  ],
+})
+
+router.beforeEach((to) => {
+  const auth = useAuthStore()
+
+  if (to.meta.requiresAuth && !auth.isAuthenticated) {
+    return { name: 'login', query: { redirect: to.fullPath } }
+  }
+
+  if (to.meta.guestOnly && auth.isAuthenticated) {
+    return { name: 'recipes' }
+  }
 })
 
 export default router

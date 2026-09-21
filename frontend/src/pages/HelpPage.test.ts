@@ -21,11 +21,18 @@ describe('HelpPage', () => {
 
   it('expands and collapses FAQ items', async () => {
     const firstItemButton = wrapper.findAll('button')[1] // Skip the back button
-    await firstItemButton.trigger('click')
-    expect(wrapper.find('.p-4.pt-0').isVisible()).toBe(true)
+    const panelStyle = () => wrapper.find('.p-4.pt-0').attributes('style') ?? ''
+
+    // Starts collapsed (v-show renders `display: none`).
+    expect(panelStyle()).toContain('display: none')
 
     await firstItemButton.trigger('click')
-    expect(wrapper.find('.p-4.pt-0').isVisible()).toBe(false)
+    expect(panelStyle()).not.toContain('display: none')
+    expect(firstItemButton.attributes('aria-expanded')).toBe('true')
+
+    await firstItemButton.trigger('click')
+    expect(panelStyle()).toContain('display: none')
+    expect(firstItemButton.attributes('aria-expanded')).toBe('false')
   })
 
   it('filters FAQ items based on search query', async () => {

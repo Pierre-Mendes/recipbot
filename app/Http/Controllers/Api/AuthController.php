@@ -86,9 +86,6 @@ class AuthController extends ApiController
 
     /**
      * Send a password reset link to the user.
-     */
-    /**
-     * Send a password reset link to the user.
      * Always returns a generic 200 response to avoid email enumeration.
      */
     public function forgotPassword(ForgotPasswordRequest $request, PasswordResetService $service): JsonResponse
@@ -106,7 +103,7 @@ class AuthController extends ApiController
         $status = $service->resetPassword($request->email, $request->token, $request->password);
 
         if ($status !== Password::PASSWORD_RESET) {
-            return $this->error('Invalid or expired token', 400);
+            return response()->json(['message' => 'Invalid or expired token'], 400);
         }
 
         return $this->success(null, 'Password has been reset successfully');
