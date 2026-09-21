@@ -14,6 +14,94 @@ tags:
   - name: Search
   - name: Tags
 paths:
+  /api/auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Send password reset link
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: pierre@example.com
+      responses:
+        '200':
+          description: Reset link sent (always returned even if email does not exist, to prevent enumeration)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message]
+                properties:
+                  message:
+                    type: string
+                    example: If an account with that email exists, a password reset link has been sent
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Reset password with token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, email, password, password_confirmation]
+              properties:
+                token:
+                  type: string
+                  example: abc123def456
+                email:
+                  type: string
+                  format: email
+                  example: pierre@example.com
+                password:
+                  type: string
+                  format: password
+                  example: newpassword123
+                password_confirmation:
+                  type: string
+                  format: password
+                  example: newpassword123
+      responses:
+        '200':
+          description: Password reset successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message]
+                properties:
+                  message:
+                    type: string
+                    example: Password has been reset successfully
+        '400':
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message]
+                properties:
+                  message:
+                    type: string
+                    example: Invalid or expired token
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /api/auth/register:
     post:
       tags: [Auth]

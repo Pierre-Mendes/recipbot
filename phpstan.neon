@@ -8,3 +8,6 @@ parameters:
     level: 8
 
     tmpDir: storage/phpstan
+
+    parallel:
+        maximumNumberOfProcesses: 1

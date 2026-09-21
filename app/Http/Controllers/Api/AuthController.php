@@ -2,16 +2,20 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Requests\ForgotPasswordRequest;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
 use App\Http\Requests\UpdatePasswordRequest;
 use App\Http\Requests\UpdateProfileRequest;
+use App\Http\Requests\ResetPasswordRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use App\Services\PasswordResetService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
 use PHPOpenSourceSaver\JWTAuth\JWTGuard;
 
@@ -78,6 +82,34 @@ class AuthController extends ApiController
         assert($guard instanceof JWTGuard);
 
         return $guard;
+    }
+
+    /**
+     * Send a password reset link to the user.
+     */
+    /**
+     * Send a password reset link to the user.
+     * Always returns a generic 200 response to avoid email enumeration.
+     */
+    public function forgotPassword(ForgotPasswordRequest $request, PasswordResetService $service): JsonResponse
+    {
+        $service->sendResetLink($request->email);
+
+        return $this->success(null, 'If an account with that email exists, a password reset link has been sent');
+    }
+
+    /**
+     * Reset the user's password.
+     */
+    public function resetPassword(ResetPasswordRequest $request, PasswordResetService $service): JsonResponse
+    {
+        $status = $service->resetPassword($request->email, $request->token, $request->password);
+
+        if ($status !== Password::PASSWORD_RESET) {
+            return $this->error('Invalid or expired token', 400);
+        }
+
+        return $this->success(null, 'Password has been reset successfully');
     }
 
     /**

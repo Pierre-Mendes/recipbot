@@ -27,6 +27,25 @@ export async function login(
   return data.data
 }
 
+export interface ForgotPasswordInput {
+  email: string
+}
+
+export interface ResetPasswordInput {
+  email: string
+  token: string
+  password: string
+  password_confirmation: string
+}
+
+export async function forgotPassword(input: ForgotPasswordInput): Promise<void> {
+  await apiClient.post('/auth/forgot-password', input)
+}
+
+export async function resetPassword(input: ResetPasswordInput): Promise<void> {
+  await apiClient.post('/auth/reset-password', input)
+}
+
 export async function logout(): Promise<void> {
   await apiClient.post('/auth/logout')
 }
