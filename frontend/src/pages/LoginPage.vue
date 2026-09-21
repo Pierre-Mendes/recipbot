@@ -53,7 +53,11 @@ async function handleSubmit() {
           <div class="space-y-2">
             <div class="flex items-center justify-between">
               <Label for="password">Senha</Label>
-              <RouterLink to="#" class="text-sm text-primary hover:underline" tabindex="-1">
+              <RouterLink
+                to="/forgot-password"
+                class="text-sm text-primary hover:underline"
+                tabindex="-1"
+              >
                 Esqueceu a senha?
               </RouterLink>
             </div>

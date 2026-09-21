@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Exceptions\RecipeScrapingException;
 use App\Http\Requests\FromUrlRequest;
+use App\Http\Requests\ImportFileRequest;
+use App\Http\Requests\ImportSpreadsheetRequest;
 use App\Http\Requests\IndexRecipesRequest;
 use App\Http\Requests\StoreRecipeRequest;
 use App\Http\Requests\UpdateRecipeRequest;
@@ -13,9 +15,15 @@ use App\Models\User;
 use App\Services\RecipeDraftService;
 use App\Services\RecipeScraperService;
 use App\Services\RecipeService;
+use App\Services\RecipeSpreadsheetService;
+use App\Services\RecipeTextImportService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 
 class RecipeController extends ApiController
 {
@@ -106,6 +114,53 @@ class RecipeController extends ApiController
     }
 
     /**
+     * Extract a recipe from an uploaded .xlsx (the export/template schema) into
+     * a review draft, WITHOUT persisting it - same review-before-save flow as
+     * URL import, just a different source. Reads the first worksheet for now.
+     */
+    public function importSpreadsheet(ImportSpreadsheetRequest $request, RecipeSpreadsheetService $spreadsheets, RecipeDraftService $drafts): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        /** @var UploadedFile $file */
+        $file = $request->file('file');
+        $draft = $spreadsheets->read($file->getRealPath());
+
+        if ($draft['title'] === '' && $draft['ingredients'] === []) {
+            return response()->json(['message' => 'Could not read a recipe from this spreadsheet.'], 422);
+        }
+
+        $id = $drafts->store($user, $draft);
+
+        return $this->success(['id' => $id, ...$draft], 'Recipe draft created', status: 201);
+    }
+
+    /**
+     * Extract a recipe from an uploaded PDF or photo (via text/OCR) into a
+     * review draft, WITHOUT persisting it - same review-before-save flow.
+     */
+    public function importFile(ImportFileRequest $request, RecipeTextImportService $extractor, RecipeDraftService $drafts): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        /** @var UploadedFile $file */
+        $file = $request->file('file');
+
+        $text = $extractor->extractText($file);
+        $draft = $extractor->parse($text);
+
+        if ($draft['title'] === '' && $draft['ingredients'] === []) {
+            return response()->json(['message' => 'Could not read a recipe from this file.'], 422);
+        }
+
+        $id = $drafts->store($user, $draft);
+
+        return $this->success(['id' => $id, ...$draft], 'Recipe draft created', status: 201);
+    }
+
+    /**
      * Re-fetch a cached import draft so the review form survives a reload.
      */
     public function draft(Request $request, RecipeDraftService $drafts, string $draft): JsonResponse
@@ -120,6 +175,41 @@ class RecipeController extends ApiController
         }
 
         return $this->success(['id' => $draft, ...$data]);
+    }
+
+    /**
+     * Export a single recipe as an .xlsx workbook (owner-only). Uses the same
+     * schema as the import template, so an exported file can be edited and
+     * imported back.
+     */
+    public function export(Recipe $recipe, RecipeSpreadsheetService $spreadsheets): Response
+    {
+        Gate::authorize('view', $recipe);
+
+        $bytes = $spreadsheets->write([$recipe]);
+        $filename = (Str::slug($recipe->title) ?: 'receita').'.xlsx';
+
+        return response($bytes, 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
+    }
+
+    /**
+     * Export a single recipe as a PDF (owner-only) - a printable "cookbook
+     * page" rendered from a Blade view.
+     */
+    public function exportPdf(Recipe $recipe): Response
+    {
+        Gate::authorize('view', $recipe);
+
+        $pdf = Pdf::loadView('pdf.recipe', ['recipe' => $recipe]);
+        $filename = (Str::slug($recipe->title) ?: 'receita').'.pdf';
+
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
     }
 
     /**

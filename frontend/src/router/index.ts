@@ -3,7 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/login',
@@ -15,6 +15,18 @@ const router = createRouter({
       path: '/register',
       name: 'register',
       component: () => import('@/pages/RegisterPage.vue'),
+      meta: { guestOnly: true },
+    },
+    {
+      path: '/forgot-password',
+      name: 'forgot-password',
+      component: () => import('@/pages/ForgotPasswordPage.vue'),
+      meta: { guestOnly: true },
+    },
+    {
+      path: '/reset-password',
+      name: 'reset-password',
+      component: () => import('@/pages/ResetPasswordPage.vue'),
       meta: { guestOnly: true },
     },
     {
@@ -40,6 +52,11 @@ const router = createRouter({
       name: 'recipe-edit',
       component: () => import('@/pages/RecipeFormPage.vue'),
       meta: { requiresAuth: true },
+    },
+    {
+      path: '/help',
+      name: 'help',
+      component: () => import('@/pages/HelpPage.vue'),
     },
     {
       path: '/profile',

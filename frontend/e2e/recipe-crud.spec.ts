@@ -20,9 +20,17 @@ test.describe('recipe CRUD (manual entry)', () => {
     await expect(page.getByRole('heading', { name: 'Nova Receita' })).toBeVisible()
 
     await page.getByLabel('Título').fill(title)
-    await page
-      .getByLabel('Ingredientes (um por linha)')
-      .fill('2 xícaras de farinha\n1 ovo\n1 xícara de leite')
+
+    // Ingredients use the structured ListEditor: each row is an input labelled
+    // "ingrediente N"; Enter on the last row appends the next one.
+    const ingredients = ['2 xícaras de farinha', '1 ovo', '1 xícara de leite']
+    for (const [index, ingredient] of ingredients.entries()) {
+      const row = page.getByLabel(`ingrediente ${index + 1}`, { exact: true })
+      await row.fill(ingredient)
+      if (index < ingredients.length - 1) {
+        await row.press('Enter')
+      }
+    }
 
     // Tags use a chip input: type the tag and press Enter to add it.
     const tagInput = page.getByLabel('Tags (pressione vírgula ou Enter para adicionar)')
@@ -70,7 +78,7 @@ test.describe('recipe CRUD (manual entry)', () => {
 
     const titleInput = page.getByLabel('Título')
     await titleInput.fill('ab')
-    await page.getByLabel('Ingredientes (um por linha)').fill('1 ovo')
+    await page.getByLabel('ingrediente 1', { exact: true }).fill('1 ovo')
     await page.getByRole('button', { name: 'Criar receita' }).click()
 
     // The native minlength constraint blocks submission - still on the form.

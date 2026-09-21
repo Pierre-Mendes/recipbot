@@ -24,6 +24,7 @@ class RecipeService
             'instructions' => $data['instructions'] ?? [],
             'tags' => $data['tags'] ?? [],
             'source_url' => $data['source_url'] ?? null,
+            'notes' => $data['notes'] ?? null,
         ]);
 
         event(new RecipeCreated($recipe, $user));

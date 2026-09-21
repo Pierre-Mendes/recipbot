@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { ChefHat, LogOut, Plus, BookOpen, Sun, Moon, UserCircle } from 'lucide-vue-next'
+import { ChefHat, LogOut, Plus, BookOpen, Sun, Moon, UserCircle, HelpCircle } from 'lucide-vue-next'
 
 import { useAuthStore } from '@/stores/auth'
 import { useDarkMode } from '@/composables/useDarkMode'
@@ -56,6 +56,15 @@ async function handleLogout() {
         </template>
 
         <div class="flex items-center gap-2 ml-2 pl-3 border-l border-border">
+          <RouterLink
+            to="/help"
+            class="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            title="Ajuda"
+          >
+            <HelpCircle class="h-5 w-5" />
+            <span class="hidden md:block">Ajuda</span>
+          </RouterLink>
+
           <!-- Dark Mode Toggle -->
           <Button
             variant="ghost"

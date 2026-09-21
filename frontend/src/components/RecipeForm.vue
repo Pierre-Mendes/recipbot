@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { PenLine, Link as LinkIcon, Loader2, Save, DownloadCloud, X } from 'lucide-vue-next'
+import {
+  PenLine,
+  Link as LinkIcon,
+  Loader2,
+  Save,
+  DownloadCloud,
+  X,
+  FileSpreadsheet,
+} from 'lucide-vue-next'
 
 import type { FromUrlInput, Recipe, RecipeDraft, RecipeFormInput } from '@/types'
 import Card from './ui/Card.vue'
@@ -8,6 +16,7 @@ import CardContent from './ui/CardContent.vue'
 import Input from './ui/Input.vue'
 import Label from './ui/Label.vue'
 import Button from './ui/Button.vue'
+import ListEditor from './ListEditor.vue'
 import { cn } from '@/utils/cn'
 
 const props = withDefaults(
@@ -27,14 +36,28 @@ const props = withDefaults(
 const emit = defineEmits<{
   submit: [input: RecipeFormInput]
   submitFromUrl: [input: FromUrlInput]
+  submitFile: [file: File]
 }>()
 
-const mode = ref<'manual' | 'url'>('manual')
+const mode = ref<'manual' | 'url' | 'file'>('manual')
+const importFile = ref<File | null>(null)
+
+function onFileChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  importFile.value = input.files?.[0] ?? null
+}
+
+function handleFileSubmit() {
+  if (importFile.value) {
+    emit('submitFile', importFile.value)
+  }
+}
 
 const title = ref(props.recipe?.title ?? '')
-const ingredientsText = ref(props.recipe?.ingredients?.join('\n') ?? '')
-const instructionsText = ref(props.recipe?.instructions?.join('\n') ?? '')
+const ingredients = ref<string[]>(props.recipe?.ingredients ? [...props.recipe.ingredients] : [])
+const instructions = ref<string[]>(props.recipe?.instructions ? [...props.recipe.instructions] : [])
 const sourceUrl = ref(props.recipe?.source_url ?? '')
+const notes = ref(props.recipe?.notes ?? '')
 const importUrl = ref('')
 
 // Tag Chips Logic
@@ -52,9 +75,10 @@ watch(
   () => props.recipe,
   (recipe) => {
     title.value = recipe?.title ?? ''
-    ingredientsText.value = recipe?.ingredients?.join('\n') ?? ''
-    instructionsText.value = recipe?.instructions?.join('\n') ?? ''
+    ingredients.value = recipe?.ingredients ? [...recipe.ingredients] : []
+    instructions.value = recipe?.instructions ? [...recipe.instructions] : []
     sourceUrl.value = recipe?.source_url ?? ''
+    notes.value = recipe?.notes ?? ''
     tags.value = recipe?.tags ? [...recipe.tags] : []
     if (recipe) {
       mode.value = 'manual'
@@ -83,23 +107,18 @@ function removeTag(index: number) {
   tags.value.splice(index, 1)
 }
 
-function parseLines(text: string): string[] {
-  return text
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-}
-
 function handleManualSubmit() {
   // force add any pending tag before submit
   if (tagInput.value) addTag()
 
+  // ListEditor already emits trimmed, non-empty items.
   emit('submit', {
     title: title.value,
-    ingredients: parseLines(ingredientsText.value),
-    instructions: parseLines(instructionsText.value),
+    ingredients: ingredients.value,
+    instructions: instructions.value,
     tags: tags.value,
     source_url: sourceUrl.value || null,
+    notes: notes.value.trim() || null,
   })
 }
 
@@ -145,6 +164,19 @@ const textareaClass =
         <LinkIcon class="h-4 w-4" />
         Importar de URL
       </button>
+      <button
+        type="button"
+        class="flex flex-1 items-center justify-center gap-2 py-4 text-sm font-medium transition-colors"
+        :class="
+          mode === 'file'
+            ? 'border-b-2 border-primary text-primary'
+            : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
+        "
+        @click="mode = 'file'"
+      >
+        <FileSpreadsheet class="h-4 w-4" />
+        Arquivo
+      </button>
     </div>
 
     <CardContent class="pt-6">
@@ -160,27 +192,22 @@ const textareaClass =
             placeholder="ex: Bolo de Cenoura com Chocolate"
           />
         </div>
-        <div class="space-y-2">
-          <Label for="ingredients">Ingredientes (um por linha)</Label>
-          <textarea
-            id="ingredients"
-            v-model="ingredientsText"
-            required
-            rows="6"
-            :class="cn(textareaClass)"
-            placeholder="2 xícaras de farinha&#10;1 xícara de açúcar&#10;..."
-          />
-        </div>
-        <div class="space-y-2">
-          <Label for="instructions">Modo de Preparo (um passo por linha)</Label>
-          <textarea
-            id="instructions"
-            v-model="instructionsText"
-            rows="6"
-            :class="cn(textareaClass)"
-            placeholder="Pré-aqueça o forno a 180°C&#10;Misture os ingredientes secos&#10;..."
-          />
-        </div>
+        <ListEditor
+          v-model="ingredients"
+          label="Ingredientes"
+          item-label="ingrediente"
+          :max-items="20"
+          :max-length="255"
+        />
+
+        <ListEditor
+          v-model="instructions"
+          label="Modo de Preparo"
+          item-label="passo"
+          ordered
+          :max-items="50"
+          :max-length="1000"
+        />
 
         <!-- Tags Input -->
         <div class="space-y-2">
@@ -214,6 +241,19 @@ const textareaClass =
           </div>
         </div>
 
+        <!-- Observação -->
+        <div class="space-y-2">
+          <Label for="notes">Observação (opcional)</Label>
+          <textarea
+            id="notes"
+            v-model="notes"
+            rows="3"
+            maxlength="2000"
+            :class="cn(textareaClass, 'min-h-[80px]')"
+            placeholder="Uma nota, um lembrete, o link de um post..."
+          />
+        </div>
+
         <div class="pt-2">
           <Button type="submit" :disabled="props.loading" class="w-full sm:w-auto">
             <Loader2 v-if="props.loading" class="mr-2 h-4 w-4 animate-spin" />
@@ -223,7 +263,7 @@ const textareaClass =
         </div>
       </form>
 
-      <form v-else class="space-y-6" @submit.prevent="handleUrlSubmit">
+      <form v-else-if="mode === 'url'" class="space-y-6" @submit.prevent="handleUrlSubmit">
         <div class="space-y-2">
           <Label for="url">URL da Receita</Label>
           <div class="relative">
@@ -282,6 +322,31 @@ const textareaClass =
             <Loader2 v-if="props.loading" class="mr-2 h-4 w-4 animate-spin" />
             <DownloadCloud v-else class="mr-2 h-4 w-4" />
             Importar receita
+          </Button>
+        </div>
+      </form>
+
+      <form v-else class="space-y-6" @submit.prevent="handleFileSubmit">
+        <div class="space-y-2">
+          <Label for="file">Arquivo (planilha, PDF ou foto)</Label>
+          <input
+            id="file"
+            type="file"
+            accept=".xlsx,.pdf,.jpg,.jpeg,.png,.webp"
+            class="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary hover:file:bg-primary/20 transition-colors"
+            @change="onFileChange"
+          />
+          <p class="text-xs text-muted-foreground mt-1.5 flex items-center">
+            <span class="inline-block w-1.5 h-1.5 rounded-full bg-primary/60 mr-1.5"></span>
+            Uma planilha exportada, um PDF de receita, ou uma foto/print.
+          </p>
+        </div>
+
+        <div class="pt-2">
+          <Button type="submit" :disabled="props.loading || !importFile" class="w-full sm:w-auto">
+            <Loader2 v-if="props.loading" class="mr-2 h-4 w-4 animate-spin" />
+            <FileSpreadsheet v-else class="mr-2 h-4 w-4" />
+            Importar arquivo
           </Button>
         </div>
       </form>

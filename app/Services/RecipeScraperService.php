@@ -221,31 +221,49 @@ class RecipeScraperService
      */
     private function extractInstructions(mixed $raw): array
     {
-        if (is_string($raw)) {
-            return $raw === '' ? [] : [$raw];
-        }
-
-        if (! is_array($raw)) {
-            return [];
-        }
-
         $steps = [];
-        foreach ($raw as $item) {
-            if (is_string($item)) {
-                $steps[] = $this->clean($item);
 
-                continue;
-            }
-
-            if (is_array($item)) {
-                $text = $item['text'] ?? $item['name'] ?? '';
-                if (is_string($text) && $text !== '') {
-                    $steps[] = $this->clean($text);
+        if (is_string($raw)) {
+            $steps = $raw === '' ? [] : [$raw];
+        } elseif (is_array($raw)) {
+            foreach ($raw as $item) {
+                if (is_string($item)) {
+                    $steps[] = $item;
+                } elseif (is_array($item)) {
+                    $text = $item['text'] ?? $item['name'] ?? '';
+                    if (is_string($text)) {
+                        $steps[] = $text;
+                    }
                 }
             }
         }
 
-        return array_values(array_filter($steps, fn ($s) => $s !== ''));
+        $steps = array_values(array_filter(
+            array_map(fn (string $s) => $this->clean($s), $steps),
+            fn (string $s) => $s !== ''
+        ));
+
+        return array_map(
+            fn (string $step, int $index) => $this->stripLeadingStepNumber($step, $index + 1),
+            $steps,
+            array_keys($steps),
+        );
+    }
+
+    /**
+     * Strip a leading step number that duplicates the step's own position.
+     *
+     * Some sites embed the step number in the instruction text ("2 Quando o
+     * leite ferver...", or "2. ..."), which the UI then renders a second time
+     * because it numbers the list itself. Only strip a leading number that
+     * equals this step's 1-based position, so genuine content like a step that
+     * really starts with a quantity is never touched.
+     */
+    private function stripLeadingStepNumber(string $text, int $position): string
+    {
+        $pattern = '/^'.$position.'\s*[.)\-\x{2013}\x{2014}]?\s+/u';
+
+        return preg_replace($pattern, '', $text) ?? $text;
     }
 
     /**

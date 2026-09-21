@@ -6,24 +6,21 @@ import RecipeForm from '@/components/RecipeForm.vue'
 const TAGS_LABEL = 'Tags (pressione vírgula ou Enter para adicionar)'
 
 describe('RecipeForm', () => {
-  it('emits parsed title/ingredients/instructions/tags on manual submit', async () => {
+  it('emits structured title/ingredients/instructions/tags on manual submit', async () => {
     const { emitted } = render(RecipeForm)
 
     await fireEvent.update(screen.getByLabelText('Título'), 'Bolo de Chocolate')
-    await fireEvent.update(
-      screen.getByLabelText('Ingredientes (um por linha)'),
-      'farinha\nacucar\novos',
-    )
-    await fireEvent.update(
-      screen.getByLabelText('Modo de Preparo (um passo por linha)'),
-      'Misture os secos\nAsse por 40 minutos',
-    )
+
+    // Ingredients are structured rows; row 1 exists, Enter adds the next.
+    await fireEvent.update(screen.getByLabelText('ingrediente 1'), 'farinha')
+    await fireEvent.keyDown(screen.getByLabelText('ingrediente 1'), { key: 'Enter' })
+    await fireEvent.update(screen.getByLabelText('ingrediente 2'), 'acucar')
+
+    await fireEvent.update(screen.getByLabelText('passo 1'), 'Misture os secos')
 
     // Tags are chips: type each one and confirm with Enter.
     const tagsInput = screen.getByLabelText(TAGS_LABEL)
     await fireEvent.update(tagsInput, 'sobremesa')
-    await fireEvent.keyDown(tagsInput, { key: 'Enter' })
-    await fireEvent.update(tagsInput, 'chocolate')
     await fireEvent.keyDown(tagsInput, { key: 'Enter' })
 
     await fireEvent.click(screen.getByRole('button', { name: 'Criar receita' }))
@@ -31,10 +28,32 @@ describe('RecipeForm', () => {
     expect(emitted().submit[0]).toEqual([
       {
         title: 'Bolo de Chocolate',
-        ingredients: ['farinha', 'acucar', 'ovos'],
-        instructions: ['Misture os secos', 'Asse por 40 minutos'],
-        tags: ['sobremesa', 'chocolate'],
+        ingredients: ['farinha', 'acucar'],
+        instructions: ['Misture os secos'],
+        tags: ['sobremesa'],
         source_url: null,
+        notes: null,
+      },
+    ])
+  })
+
+  it('includes the optional note in the manual submit payload', async () => {
+    const { emitted } = render(RecipeForm)
+
+    await fireEvent.update(screen.getByLabelText('Título'), 'Bolo')
+    await fireEvent.update(screen.getByLabelText('ingrediente 1'), 'farinha')
+    await fireEvent.update(screen.getByLabelText('Observação (opcional)'), 'Ver post no Instagram')
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Criar receita' }))
+
+    expect(emitted().submit[0]).toEqual([
+      {
+        title: 'Bolo',
+        ingredients: ['farinha'],
+        instructions: [],
+        tags: [],
+        source_url: null,
+        notes: 'Ver post no Instagram',
       },
     ])
   })
@@ -55,6 +74,22 @@ describe('RecipeForm', () => {
         tags: [],
       },
     ])
+  })
+
+  it('emits the chosen file from the Arquivo tab', async () => {
+    const { emitted } = render(RecipeForm)
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Arquivo' }))
+    const file = new File(['x'], 'receita.xlsx', {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
+    const input = screen.getByLabelText('Arquivo (planilha, PDF ou foto)') as HTMLInputElement
+    // jsdom's input.files is read-only, so define it before firing change.
+    Object.defineProperty(input, 'files', { value: [file], configurable: true })
+    await fireEvent.change(input)
+    await fireEvent.click(screen.getByRole('button', { name: 'Importar arquivo' }))
+
+    expect(emitted().submitFile[0]).toEqual([file])
   })
 
   it('hides the URL-import tab when editing an existing recipe', () => {
@@ -99,9 +134,9 @@ describe('RecipeForm', () => {
     expect(screen.queryByRole('button', { name: 'Salvar alterações' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Criar receita' })).toBeInTheDocument()
     expect(screen.getByLabelText('Título')).toHaveValue('Churros')
-    expect(screen.getByLabelText('Modo de Preparo (um passo por linha)')).toHaveValue(
-      'Ferva a agua\nFrite',
-    )
+    expect(screen.getByLabelText('ingrediente 1')).toHaveValue('agua')
+    expect(screen.getByLabelText('passo 1')).toHaveValue('Ferva a agua')
+    expect(screen.getByLabelText('passo 2')).toHaveValue('Frite')
   })
 
   it('re-hydrates the fields when a draft arrives after mount (import review)', async () => {
@@ -125,16 +160,16 @@ describe('RecipeForm', () => {
     })
 
     expect(screen.getByLabelText('Título')).toHaveValue('Churros')
-    expect(screen.getByLabelText('Ingredientes (um por linha)')).toHaveValue('agua\nfarinha')
-    expect(screen.getByLabelText('Modo de Preparo (um passo por linha)')).toHaveValue(
-      'Ferva a agua\nFrite',
-    )
+    expect(screen.getByLabelText('ingrediente 1')).toHaveValue('agua')
+    expect(screen.getByLabelText('ingrediente 2')).toHaveValue('farinha')
+    expect(screen.getByLabelText('passo 1')).toHaveValue('Ferva a agua')
     expect(screen.getByText('doce')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Criar receita' })).toBeInTheDocument()
 
     // Discarding the draft (recipe -> null) clears the fields back to empty.
     await rerender({ recipe: null, submitLabel: null })
     expect(screen.getByLabelText('Título')).toHaveValue('')
+    expect(screen.getByLabelText('ingrediente 1')).toHaveValue('')
   })
 
   it('fills the fields from an already-loaded recipe at mount', () => {
@@ -155,10 +190,9 @@ describe('RecipeForm', () => {
     })
 
     expect(screen.getByLabelText('Título')).toHaveValue('Bolo')
-    expect(screen.getByLabelText('Ingredientes (um por linha)')).toHaveValue('farinha\nacucar')
-    expect(screen.getByLabelText('Modo de Preparo (um passo por linha)')).toHaveValue(
-      'Misture tudo',
-    )
+    expect(screen.getByLabelText('ingrediente 1')).toHaveValue('farinha')
+    expect(screen.getByLabelText('ingrediente 2')).toHaveValue('acucar')
+    expect(screen.getByLabelText('passo 1')).toHaveValue('Misture tudo')
     // The existing tag is rendered as a chip, not as the input's value.
     expect(screen.getByText('sobremesa')).toBeInTheDocument()
   })

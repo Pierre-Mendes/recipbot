@@ -1,9 +1,22 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Pencil, Trash2, Link as LinkIcon, ChefHat, ArrowLeft } from 'lucide-vue-next'
+import {
+  Pencil,
+  Trash2,
+  Link as LinkIcon,
+  ChefHat,
+  ArrowLeft,
+  StickyNote,
+  Download,
+  Loader2,
+  FileSpreadsheet,
+  FileText,
+} from 'lucide-vue-next'
 
-import { getRecipe } from '@/api/recipes'
+import { getRecipe, exportRecipe, exportRecipePdf } from '@/api/recipes'
+import { parseIngredient } from '@/utils/parseIngredient'
+import { convertIngredient, type UnitSystem } from '@/utils/units'
 import type { Recipe } from '@/types'
 import { useRecipesStore } from '@/stores/recipes'
 import { useToast } from '@/composables/useToast'
@@ -22,6 +35,53 @@ const { confirm } = useConfirmDialog()
 const recipe = ref<Recipe | null>(null)
 const loading = ref(true)
 const notFound = ref(false)
+
+const UNIT_KEY = 'recipbot:unit-system'
+const UNIT_OPTIONS: { value: UnitSystem; label: string }[] = [
+  { value: 'original', label: 'Original' },
+  { value: 'g', label: 'g' },
+  { value: 'ml', label: 'ml' },
+  { value: 'cup', label: 'xícara' },
+]
+
+function loadUnitSystem(): UnitSystem {
+  try {
+    const saved = localStorage.getItem(UNIT_KEY)
+    if (saved && UNIT_OPTIONS.some((o) => o.value === saved)) {
+      return saved as UnitSystem
+    }
+  } catch {
+    // localStorage can be unavailable (private mode) - fall back to original.
+  }
+  return 'original'
+}
+
+const unitSystem = ref<UnitSystem>(loadUnitSystem())
+
+function setUnitSystem(value: UnitSystem): void {
+  unitSystem.value = value
+  try {
+    localStorage.setItem(UNIT_KEY, value)
+  } catch {
+    // Persisting the preference is best-effort.
+  }
+}
+
+// Each ingredient rendered as { measure, name, converted }. When a target unit
+// is chosen and the line can be converted, show the converted amount (marked
+// approximate); otherwise fall back to the original highlighted measure.
+const displayIngredients = computed(() =>
+  (recipe.value?.ingredients ?? []).map((raw) => {
+    if (unitSystem.value !== 'original') {
+      const converted = convertIngredient(raw, unitSystem.value)
+      if (converted) {
+        return { ...converted, converted: true }
+      }
+    }
+    const { measure, name } = parseIngredient(raw)
+    return { measure, name, converted: false }
+  }),
+)
 
 const id = route.params.id as string
 
@@ -54,8 +114,55 @@ async function handleDelete() {
   }
 }
 
+const exporting = ref(false)
+const exportMenuOpen = ref(false)
+
+function saveBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
+async function handleExport(format: 'xlsx' | 'pdf') {
+  if (!recipe.value) return
+  exportMenuOpen.value = false
+  exporting.value = true
+  try {
+    const blob =
+      format === 'pdf'
+        ? await exportRecipePdf(recipe.value.id)
+        : await exportRecipe(recipe.value.id)
+    const slug =
+      recipe.value.title
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}]+/gu, '-')
+        .replace(/^-|-$/g, '') || 'receita'
+    saveBlob(blob, `${slug}.${format}`)
+  } catch {
+    toast.error('Não foi possível exportar a receita.')
+  } finally {
+    exporting.value = false
+  }
+}
+
 function goBack() {
   router.push({ name: 'recipes' })
+}
+
+/**
+ * Split note text into plain and link segments so URLs render as clickable
+ * anchors without ever using v-html (the raw text stays escaped by Vue).
+ */
+function noteSegments(text: string): { text: string; href: string | null }[] {
+  return text.split(/(https?:\/\/[^\s]+)/g).map((part) => ({
+    text: part,
+    href: /^https?:\/\//.test(part) ? part : null,
+  }))
 }
 </script>
 
@@ -121,6 +228,41 @@ function goBack() {
           {{ recipe.title }}
         </h1>
         <div class="flex gap-2 shrink-0">
+          <div class="relative">
+            <Button
+              variant="outline"
+              size="sm"
+              :disabled="exporting"
+              @click="exportMenuOpen = !exportMenuOpen"
+            >
+              <Loader2 v-if="exporting" class="h-4 w-4 mr-2 animate-spin" />
+              <Download v-else class="h-4 w-4 mr-2" />
+              Exportar
+            </Button>
+            <template v-if="exportMenuOpen">
+              <div class="fixed inset-0 z-10" @click="exportMenuOpen = false"></div>
+              <div
+                class="absolute right-0 mt-1 z-20 w-44 rounded-md border border-border bg-card shadow-lg py-1 animate-in fade-in zoom-in-95 duration-150"
+              >
+                <button
+                  type="button"
+                  class="flex w-full items-center gap-2 px-3 py-2 text-sm text-left text-foreground hover:bg-muted/60 transition-colors"
+                  @click="handleExport('xlsx')"
+                >
+                  <FileSpreadsheet class="h-4 w-4 text-primary" />
+                  Excel (.xlsx)
+                </button>
+                <button
+                  type="button"
+                  class="flex w-full items-center gap-2 px-3 py-2 text-sm text-left text-foreground hover:bg-muted/60 transition-colors"
+                  @click="handleExport('pdf')"
+                >
+                  <FileText class="h-4 w-4 text-primary" />
+                  PDF
+                </button>
+              </div>
+            </template>
+          </div>
           <RouterLink :to="{ name: 'recipe-edit', params: { id: recipe.id } }">
             <Button variant="outline" size="sm">
               <Pencil class="h-4 w-4 mr-2" />
@@ -154,14 +296,50 @@ function goBack() {
               <ChefHat class="h-5 w-5 mr-2 text-primary" />
               Ingredientes
             </h2>
+
+            <div
+              class="inline-flex items-center rounded-lg border border-border bg-muted/40 p-0.5 mb-4"
+              role="group"
+              aria-label="Unidade de exibição"
+            >
+              <button
+                v-for="opt in UNIT_OPTIONS"
+                :key="opt.value"
+                type="button"
+                class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
+                :class="
+                  unitSystem === opt.value
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                "
+                :aria-pressed="unitSystem === opt.value"
+                @click="setUnitSystem(opt.value)"
+              >
+                {{ opt.label }}
+              </button>
+            </div>
+
             <ul class="space-y-3">
-              <li v-for="(ingredient, i) in recipe.ingredients" :key="i" class="flex items-start">
+              <li v-for="(item, i) in displayIngredients" :key="i" class="flex items-start">
                 <div
                   class="mr-3 mt-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary/20 text-primary"
                 >
                   <span class="h-1.5 w-1.5 rounded-full bg-primary"></span>
                 </div>
-                <span class="text-sm text-card-foreground leading-tight">{{ ingredient }}</span>
+                <span class="text-sm text-card-foreground leading-tight">
+                  <template v-if="item.measure">
+                    <span class="font-semibold text-primary tabular-nums"
+                      ><span
+                        v-if="item.converted"
+                        class="text-muted-foreground"
+                        title="Valor aproximado"
+                        >≈ </span
+                      >{{ item.measure }}</span
+                    >
+                    {{ item.name }}
+                  </template>
+                  <template v-else>{{ item.name }}</template>
+                </span>
               </li>
             </ul>
           </CardContent>
@@ -177,6 +355,27 @@ function goBack() {
           <LinkIcon class="h-4 w-4" />
           Fonte Original
         </a>
+
+        <Card v-if="recipe.notes" class="bg-card shadow-sm border-border/50">
+          <CardContent class="p-6">
+            <h2 class="flex items-center text-lg font-semibold text-foreground mb-3">
+              <StickyNote class="h-5 w-5 mr-2 text-primary" />
+              Observação
+            </h2>
+            <p class="text-sm text-card-foreground leading-relaxed whitespace-pre-line break-words">
+              <template v-for="(seg, i) in noteSegments(recipe.notes)" :key="i"
+                ><a
+                  v-if="seg.href"
+                  :href="seg.href"
+                  target="_blank"
+                  rel="noopener nofollow"
+                  class="text-primary underline underline-offset-2 break-all"
+                  >{{ seg.text }}</a
+                ><template v-else>{{ seg.text }}</template></template
+              >
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       <!-- Instructions -->

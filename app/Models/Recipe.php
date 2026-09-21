@@ -32,6 +32,7 @@ class Recipe extends Model
         'instructions',
         'tags',
         'source_url',
+        'notes',
     ];
 
     /**
@@ -77,6 +78,7 @@ class Recipe extends Model
             'tags' => ['sometimes', 'array', 'max:10'],
             'tags.*' => ['string', 'max:50', 'regex:/^[\p{L}\p{N} -]+$/u'],
             'source_url' => ['nullable', 'url', 'max:2048'],
+            'notes' => ['sometimes', 'nullable', 'string', 'max:2000'],
         ];
     }
 
@@ -102,6 +104,7 @@ class Recipe extends Model
             'tags' => ['sometimes', 'array', 'max:10'],
             'tags.*' => ['string', 'max:50', 'regex:/^[\p{L}\p{N} -]+$/u'],
             'source_url' => ['sometimes', 'nullable', 'url', 'max:2048'],
+            'notes' => ['sometimes', 'nullable', 'string', 'max:2000'],
         ];
     }
 

@@ -71,6 +71,22 @@ export async function deleteRecipe(id: string): Promise<void> {
   await apiClient.delete(`/recipes/${id}`)
 }
 
+/**
+ * Download a recipe as an .xlsx workbook. The endpoint is JWT-protected, so we
+ * fetch the bytes through the authenticated client (a plain link can't send the
+ * Authorization header) and return the Blob for the caller to save.
+ */
+export async function exportRecipe(id: string): Promise<Blob> {
+  const { data } = await apiClient.get(`/recipes/${id}/export`, { responseType: 'blob' })
+  return data as Blob
+}
+
+/** Download a recipe as a PDF (see {@link exportRecipe} for why we fetch bytes). */
+export async function exportRecipePdf(id: string): Promise<Blob> {
+  const { data } = await apiClient.get(`/recipes/${id}/export-pdf`, { responseType: 'blob' })
+  return data as Blob
+}
+
 export async function createRecipeFromUrl(input: FromUrlInput): Promise<Recipe> {
   const { data } = await apiClient.post('/recipes/from-url', input)
   return unwrapRecipe(data)
@@ -106,6 +122,28 @@ function unwrapDraft(body: unknown): RecipeDraft {
  */
 export async function previewRecipeFromUrl(input: FromUrlInput): Promise<RecipeDraft> {
   const { data } = await apiClient.post('/recipes/preview-url', input)
+  return unwrapDraft(data)
+}
+
+/**
+ * Upload an .xlsx (the export/template format) and get back a review draft -
+ * same review-before-save flow as URL import, from a file instead.
+ */
+export async function importRecipeSpreadsheet(file: File): Promise<RecipeDraft> {
+  const form = new FormData()
+  form.append('file', file)
+  const { data } = await apiClient.post('/recipes/import-spreadsheet', form)
+  return unwrapDraft(data)
+}
+
+/**
+ * Upload a PDF or photo and get back a review draft. PDFs with a text layer
+ * are read directly; images go through OCR - both land on the review screen.
+ */
+export async function importRecipeFile(file: File): Promise<RecipeDraft> {
+  const form = new FormData()
+  form.append('file', file)
+  const { data } = await apiClient.post('/recipes/import-file', form)
   return unwrapDraft(data)
 }
 
