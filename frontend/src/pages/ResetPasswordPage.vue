@@ -29,12 +29,7 @@ onMounted(() => {
 })
 
 async function handleSubmit() {
-  await auth.resetPassword(
-    email.value,
-    token.value,
-    password.value,
-    passwordConfirmation.value
-  )
+  await auth.resetPassword(email.value, token.value, password.value, passwordConfirmation.value)
   success.value = true
   setTimeout(() => router.push({ name: 'login' }), 1200)
 }

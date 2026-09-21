@@ -11,9 +11,9 @@ const filteredContent = computed(() => {
   if (!searchQuery.value) return helpContent
 
   const query = searchQuery.value.toLowerCase()
-  return helpContent.filter(item =>
-    item.question.toLowerCase().includes(query) ||
-    item.answer.toLowerCase().includes(query)
+  return helpContent.filter(
+    (item) =>
+      item.question.toLowerCase().includes(query) || item.answer.toLowerCase().includes(query),
   )
 })
 
@@ -34,15 +34,28 @@ const goBack = () => {
         class="mr-4 p-2 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
         aria-label="Voltar"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-6 w-6"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M15 19l-7-7 7-7"
+          />
         </svg>
       </button>
       <h1 class="text-2xl font-bold">Ajuda</h1>
     </div>
 
     <div class="mb-6">
-      <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Buscar perguntas</label>
+      <label for="search" class="block text-sm font-medium text-gray-700 mb-1"
+        >Buscar perguntas</label
+      >
       <input
         id="search"
         v-model="searchQuery"
@@ -69,15 +82,16 @@ const goBack = () => {
             viewBox="0 0 24 24"
             stroke="currentColor"
           >
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M19 9l-7 7-7-7"
+            />
           </svg>
         </button>
 
-        <div
-          v-show="activeIndex === index"
-          :id="`faq-${index}`"
-          class="p-4 pt-0 text-gray-700"
-        >
+        <div v-show="activeIndex === index" :id="`faq-${index}`" class="p-4 pt-0 text-gray-700">
           <p v-html="item.answer"></p>
         </div>
       </div>
@@ -86,11 +100,13 @@ const goBack = () => {
 </template>
 
 <style scoped>
-.fade-enter-active, .fade-leave-active {
+.fade-enter-active,
+.fade-leave-active {
   transition: opacity 0.3s ease;
 }
 
-.fade-enter-from, .fade-leave-to {
+.fade-enter-from,
+.fade-leave-to {
   opacity: 0;
 }
 </style>

@@ -5,7 +5,7 @@ export interface HelpItem {
 
 export const helpContent: HelpItem[] = [
   {
-    question: "Como criar uma receita manual?",
+    question: 'Como criar uma receita manual?',
     answer: `<p>Para criar uma receita manual:</p>
     <ol>
       <li>Clique no botão "Nova Receita" na página inicial.</li>
@@ -14,10 +14,10 @@ export const helpContent: HelpItem[] = [
       <li>Digite as instruções passo a passo.</li>
       <li>Adicione tags para organizar sua receita.</li>
       <li>Clique em "Salvar" para adicionar a receita ao seu livro.</li>
-    </ol>`
+    </ol>`,
   },
   {
-    question: "Como importar uma receita por link?",
+    question: 'Como importar uma receita por link?',
     answer: `<p>Para importar uma receita por link:</p>
     <ol>
       <li>Clique no botão "Importar" na página inicial.</li>
@@ -26,10 +26,10 @@ export const helpContent: HelpItem[] = [
       <li>Clique em "Importar" para revisar a receita extraída.</li>
       <li>Faça as edições necessárias e clique em "Salvar" para adicionar ao seu livro.</li>
     </ol>
-    <p>Atualmente suportamos sites como Tudogostoso, Cybercook e Receitas Globo.</p>`
+    <p>Atualmente suportamos sites como Tudogostoso, Cybercook e Receitas Globo.</p>`,
   },
   {
-    question: "Como organizar receitas por tags?",
+    question: 'Como organizar receitas por tags?',
     answer: `<p>Para organizar suas receitas por tags:</p>
     <ol>
       <li>Ao criar ou editar uma receita, digite as tags no campo "Tags".</li>
@@ -37,10 +37,10 @@ export const helpContent: HelpItem[] = [
       <li>Para remover uma tag, clique no ícone de X ao lado dela.</li>
       <li>Use tags como "Sobremesa", "Principal", "Rápido" para categorizar suas receitas.</li>
       <li>Para filtrar receitas por tag, clique na tag desejada na página inicial.</li>
-    </ol>`
+    </ol>`,
   },
   {
-    question: "Como buscar receitas?",
+    question: 'Como buscar receitas?',
     answer: `<p>Para buscar receitas:</p>
     <ol>
       <li>Digite sua busca no campo de busca na página inicial.</li>
@@ -48,10 +48,10 @@ export const helpContent: HelpItem[] = [
       <li>Os resultados serão filtrados por título e ingredientes.</li>
       <li>Use tags para refinar sua busca (ex: "Sobremesa" + "Chocolate").</li>
       <li>Para limpar a busca, clique no ícone de X no campo de busca.</li>
-    </ol>`
+    </ol>`,
   },
   {
-    question: "Como editar meu perfil e senha?",
+    question: 'Como editar meu perfil e senha?',
     answer: `<p>Para editar seu perfil e senha:</p>
     <ol>
       <li>Clique no ícone de perfil no canto superior direito.</li>
@@ -59,6 +59,6 @@ export const helpContent: HelpItem[] = [
       <li>Para editar seu nome ou e-mail, clique no ícone de lápis ao lado do campo.</li>
       <li>Para alterar sua senha, clique em "Alterar Senha" e siga as instruções.</li>
       <li>Clique em "Salvar" para confirmar as alterações.</li>
-    </ol>`
-  }
+    </ol>`,
+  },
 ]

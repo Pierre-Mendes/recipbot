@@ -40,9 +40,10 @@ describe('HelpPage', () => {
     await searchInput.setValue('receita manual')
 
     const visibleItems = wrapper.findAll('.border-b:not([style*="display: none"])')
-    const filteredItems = helpContent.filter(item =>
-      item.question.toLowerCase().includes('receita manual') ||
-      item.answer.toLowerCase().includes('receita manual')
+    const filteredItems = helpContent.filter(
+      (item) =>
+        item.question.toLowerCase().includes('receita manual') ||
+        item.answer.toLowerCase().includes('receita manual'),
     )
 
     expect(visibleItems).toHaveLength(filteredItems.length)
