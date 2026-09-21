@@ -5,7 +5,7 @@ import * as authApi from '@/api/auth'
 import type { User } from '@/types'
 import { getToken, removeToken, setToken } from '@/utils/auth'
 
-export const useAuthStore = defineStore('auth', () => {
+const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
@@ -61,6 +61,42 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function forgotPassword(email: string): Promise<void> {
+    loading.value = true
+    error.value = null
+    try {
+      await authApi.forgotPassword({ email })
+    } catch (e) {
+      error.value = extractErrorMessage(e, 'Failed to send reset link')
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function resetPassword(
+    email: string,
+    token: string,
+    password: string,
+    passwordConfirmation: string,
+  ): Promise<void> {
+    loading.value = true
+    error.value = null
+    try {
+      await authApi.resetPassword({
+        email,
+        token,
+        password,
+        password_confirmation: passwordConfirmation,
+      })
+    } catch (e) {
+      error.value = extractErrorMessage(e, 'Failed to reset password')
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function logout(): Promise<void> {
     try {
       await authApi.logout()
@@ -109,6 +145,8 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     login,
     register,
+    forgotPassword,
+    resetPassword,
     logout,
     fetchCurrentUser,
     updateProfile,
@@ -116,3 +154,5 @@ export const useAuthStore = defineStore('auth', () => {
     clearSession,
   }
 })
+
+export { useAuthStore }
