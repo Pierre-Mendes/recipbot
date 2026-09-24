@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Exceptions\RecipeScrapingException;
 use GuzzleHttp\Exception\RequestException;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 
 class RecipeScraperService
@@ -22,6 +23,10 @@ class RecipeScraperService
 
     private const MAX_INSTRUCTION_LENGTH = 1000;
 
+    private const MAX_REDIRECTS = 3;
+
+    private const MAX_JSON_LD_DEPTH = 6;
+
     public function __construct(
         private readonly SsrfGuard $ssrfGuard,
     ) {}
@@ -32,6 +37,50 @@ class RecipeScraperService
      * @return array{title: string, ingredients: list<string>, instructions: list<string>}
      */
     public function extract(string $url): array
+    {
+        $extracted = $this->capExtraction($this->parse($this->fetch($url)));
+
+        if ($extracted['title'] === '' || $extracted['ingredients'] === []) {
+            throw new RecipeScrapingException('Could not extract a recipe from this page.');
+        }
+
+        return $extracted;
+    }
+
+    /**
+     * Fetch the page body, following a bounded number of redirects.
+     *
+     * Sites move their recipes around (receitas.globo.com now answers with a
+     * redirect to gshow.globo.com; plain http:// links bounce to https://), so
+     * refusing every redirect made perfectly valid links fail. Redirects are
+     * still never delegated to Guzzle: each hop is re-validated through the
+     * SSRF guard - whitelist and resolved IP - exactly like the original URL,
+     * so a redirect can never lead the scraper off the whitelist.
+     */
+    private function fetch(string $url): string
+    {
+        for ($hop = 0; $hop <= self::MAX_REDIRECTS; $hop++) {
+            $response = $this->request($url);
+
+            if (! $response->redirect()) {
+                return $this->body($response);
+            }
+
+            $location = $response->header('Location');
+            if ($location === '') {
+                throw new RecipeScrapingException('Could not fetch the page.');
+            }
+
+            $url = $this->resolveLocation($url, $location);
+        }
+
+        throw new RecipeScrapingException('Too many redirects.');
+    }
+
+    /**
+     * Perform a single, non-following GET against an SSRF-validated URL.
+     */
+    private function request(string $url): Response
     {
         $maxBytes = (int) config('scraper.max_response_bytes');
 
@@ -51,7 +100,14 @@ class RecipeScraperService
         $port = $parts['port'] ?? (strtolower($parts['scheme']) === 'https' ? 443 : 80);
 
         try {
-            $response = Http::timeout((int) config('scraper.timeout'))
+            // Recipe portals sit behind CDNs/WAFs that reject the default
+            // "GuzzleHttp/7" agent outright, so present as a regular browser.
+            return Http::timeout((int) config('scraper.timeout'))
+                ->withHeaders([
+                    'User-Agent' => (string) config('scraper.user_agent'),
+                    'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language' => 'pt-BR,pt;q=0.9,en;q=0.8',
+                ])
                 ->withOptions([
                     'allow_redirects' => false,
                     'curl' => [
@@ -71,10 +127,14 @@ class RecipeScraperService
         } catch (RequestException) {
             throw new RecipeScrapingException('Response too large.');
         }
+    }
 
-        if ($response->redirect()) {
-            throw new RecipeScrapingException('Redirects are not followed for scraping.');
-        }
+    /**
+     * Validate a final (non-redirect) response and return its body.
+     */
+    private function body(Response $response): string
+    {
+        $maxBytes = (int) config('scraper.max_response_bytes');
 
         if (! $response->successful()) {
             throw new RecipeScrapingException('Could not fetch the page.');
@@ -90,13 +150,37 @@ class RecipeScraperService
             throw new RecipeScrapingException('Response too large.');
         }
 
-        $extracted = $this->capExtraction($this->parse($body));
+        return $body;
+    }
 
-        if ($extracted['title'] === '' || $extracted['ingredients'] === []) {
-            throw new RecipeScrapingException('Could not extract a recipe from this page.');
+    /**
+     * Turn a Location header (absolute, protocol-relative or path-relative)
+     * into an absolute URL based on the URL that produced it.
+     */
+    private function resolveLocation(string $base, string $location): string
+    {
+        if (preg_match('#^[a-z][a-z0-9+.\-]*://#i', $location) === 1) {
+            return $location;
         }
 
-        return $extracted;
+        $parts = parse_url($base);
+        if ($parts === false || ! isset($parts['scheme'], $parts['host'])) {
+            throw new RecipeScrapingException('Invalid URL.');
+        }
+
+        $scheme = $parts['scheme'];
+        if (str_starts_with($location, '//')) {
+            return "{$scheme}:{$location}";
+        }
+
+        $origin = "{$scheme}://{$parts['host']}".(isset($parts['port']) ? ":{$parts['port']}" : '');
+        if (str_starts_with($location, '/')) {
+            return $origin.$location;
+        }
+
+        $directory = preg_replace('#/[^/]*$#', '/', $parts['path'] ?? '/') ?? '/';
+
+        return $origin.$directory.$location;
     }
 
     /**
@@ -154,21 +238,51 @@ class RecipeScraperService
                 continue;
             }
 
-            foreach ($this->flattenJsonLd($data) as $node) {
-                if (! is_array($node) || ! $this->isRecipeNode($node)) {
-                    continue;
+            $node = $this->findRecipeNode($data, 0);
+            if ($node === null) {
+                continue;
+            }
+
+            $ingredients = array_values(array_filter(array_map(
+                fn ($v) => is_string($v) ? $this->clean($v) : '',
+                (array) ($node['recipeIngredient'] ?? $node['ingredients'] ?? [])
+            ), fn ($v) => $v !== ''));
+
+            return [
+                'title' => is_string($node['name'] ?? null) ? $this->clean($node['name']) : '',
+                'ingredients' => $ingredients,
+                'instructions' => $this->extractInstructions($node['recipeInstructions'] ?? []),
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * Depth-first search for the schema.org Recipe node. Sites nest it in
+     * every possible way - a bare object, a list, an "@graph", or inside a
+     * WebPage's "mainEntity" - so walk the whole (bounded-depth) structure
+     * rather than guessing the wrapper.
+     *
+     * @param  array<mixed>  $data
+     * @return array<mixed>|null
+     */
+    private function findRecipeNode(array $data, int $depth): ?array
+    {
+        if ($depth > self::MAX_JSON_LD_DEPTH) {
+            return null;
+        }
+
+        if ($this->isRecipeNode($data)) {
+            return $data;
+        }
+
+        foreach ($data as $value) {
+            if (is_array($value)) {
+                $found = $this->findRecipeNode($value, $depth + 1);
+                if ($found !== null) {
+                    return $found;
                 }
-
-                $ingredients = array_values(array_filter(array_map(
-                    fn ($v) => is_string($v) ? $this->clean($v) : '',
-                    (array) ($node['recipeIngredient'] ?? [])
-                ), fn ($v) => $v !== ''));
-
-                return [
-                    'title' => is_string($node['name'] ?? null) ? $this->clean($node['name']) : '',
-                    'ingredients' => $ingredients,
-                    'instructions' => $this->extractInstructions($node['recipeInstructions'] ?? []),
-                ];
             }
         }
 
@@ -176,70 +290,34 @@ class RecipeScraperService
     }
 
     /**
-     * JSON-LD can be a single object, a list of objects, or wrapped in
-     * "@graph" - normalize to a flat list of nodes to search.
-     *
-     * @param  array<mixed>  $data
-     * @return list<mixed>
-     */
-    private function flattenJsonLd(array $data): array
-    {
-        if (isset($data['@graph']) && is_array($data['@graph'])) {
-            return array_values($data['@graph']);
-        }
-
-        if (array_is_list($data)) {
-            return $data;
-        }
-
-        return [$data];
-    }
-
-    /**
      * @param  array<mixed>  $node
      */
     private function isRecipeNode(array $node): bool
     {
-        $type = $node['@type'] ?? null;
+        $types = array_filter((array) ($node['@type'] ?? []), 'is_string');
 
-        if (is_string($type)) {
-            return $type === 'Recipe';
-        }
-
-        if (is_array($type)) {
-            return in_array('Recipe', $type, true);
+        foreach ($types as $type) {
+            // Accept "Recipe" as well as prefixed/IRI forms like
+            // "schema:Recipe" or "http://schema.org/Recipe".
+            if (preg_match('#(^|[/:])Recipe$#', $type) === 1) {
+                return true;
+            }
         }
 
         return false;
     }
 
     /**
-     * recipeInstructions is commonly a string, a list of strings, or a list
-     * of HowToStep objects with a "text" field.
+     * recipeInstructions is commonly a string, a list of strings, a list of
+     * HowToStep objects with a "text" field, or HowToSection objects that
+     * group steps under "itemListElement".
      *
      * @return list<string>
      */
     private function extractInstructions(mixed $raw): array
     {
-        $steps = [];
-
-        if (is_string($raw)) {
-            $steps = $raw === '' ? [] : [$raw];
-        } elseif (is_array($raw)) {
-            foreach ($raw as $item) {
-                if (is_string($item)) {
-                    $steps[] = $item;
-                } elseif (is_array($item)) {
-                    $text = $item['text'] ?? $item['name'] ?? '';
-                    if (is_string($text)) {
-                        $steps[] = $text;
-                    }
-                }
-            }
-        }
-
         $steps = array_values(array_filter(
-            array_map(fn (string $s) => $this->clean($s), $steps),
+            array_map(fn (string $s) => $this->clean($s), $this->collectSteps($raw, 0)),
             fn (string $s) => $s !== ''
         ));
 
@@ -248,6 +326,45 @@ class RecipeScraperService
             $steps,
             array_keys($steps),
         );
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function collectSteps(mixed $raw, int $depth): array
+    {
+        if ($depth > self::MAX_JSON_LD_DEPTH) {
+            return [];
+        }
+
+        if (is_string($raw)) {
+            // A single string may hold every step, separated by line breaks
+            // or HTML paragraphs/list items.
+            $parts = preg_split('#\r\n|\n|<br\s*/?>|</p>|</li>#i', $raw) ?: [$raw];
+
+            return array_map(fn (string $p) => strip_tags($p), $parts);
+        }
+
+        if (! is_array($raw)) {
+            return [];
+        }
+
+        if (isset($raw['itemListElement'])) {
+            return $this->collectSteps($raw['itemListElement'], $depth + 1);
+        }
+
+        if (! array_is_list($raw)) {
+            $text = $raw['text'] ?? $raw['name'] ?? '';
+
+            return is_string($text) ? [strip_tags($text)] : [];
+        }
+
+        $steps = [];
+        foreach ($raw as $item) {
+            array_push($steps, ...$this->collectSteps($item, $depth + 1));
+        }
+
+        return $steps;
     }
 
     /**

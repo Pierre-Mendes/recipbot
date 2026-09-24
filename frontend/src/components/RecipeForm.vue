@@ -281,7 +281,7 @@ const textareaClass =
           </div>
           <p class="text-xs text-muted-foreground mt-1.5 flex items-center">
             <span class="inline-block w-1.5 h-1.5 rounded-full bg-primary/60 mr-1.5"></span>
-            Suporta tudogostoso.com.br, cybercook.com.br, e receitas.globo.com
+            Suporta tudogostoso.com.br e receitas do Globo (receitas.globo.com / gshow.globo.com)
           </p>
         </div>
 
@@ -338,7 +338,8 @@ const textareaClass =
           />
           <p class="text-xs text-muted-foreground mt-1.5 flex items-center">
             <span class="inline-block w-1.5 h-1.5 rounded-full bg-primary/60 mr-1.5"></span>
-            Uma planilha exportada, um PDF de receita, ou uma foto/print.
+            Uma planilha exportada, um PDF (com uma ou várias receitas, até 20 MB) ou uma
+            foto/print.
           </p>
         </div>
 

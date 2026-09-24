@@ -26,6 +26,8 @@ Route::middleware('auth:api')->group(function () {
     Route::post('recipes/preview-url', [RecipeController::class, 'previewUrl']);
     Route::post('recipes/import-spreadsheet', [RecipeController::class, 'importSpreadsheet']);
     Route::post('recipes/import-file', [RecipeController::class, 'importFile']);
+    Route::post('recipes/import-pdf', [RecipeController::class, 'importPdf']);
+    Route::post('recipes/import-pdf/{import}/drafts', [RecipeController::class, 'confirmPdfImport']);
     Route::get('recipes/drafts/{draft}', [RecipeController::class, 'draft']);
     Route::get('recipes/{recipe}/export', [RecipeController::class, 'export']);
     Route::get('recipes/{recipe}/export-pdf', [RecipeController::class, 'exportPdf']);

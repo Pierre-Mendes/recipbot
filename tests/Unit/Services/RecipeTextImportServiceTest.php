@@ -65,4 +65,62 @@ class RecipeTextImportServiceTest extends TestCase
         $this->assertSame([], $draft['ingredients']);
         $this->assertSame([], $draft['instructions']);
     }
+
+    public function test_joins_lines_that_the_pdf_wrapped_mid_sentence(): void
+    {
+        $text = implode("\n", [
+            'Bolo de abóbora',
+            'Ingredientes',
+            '2 xícaras de abóbora picada e',
+            'descascada (350 gramas)',
+            '3 ovos',
+            'Preparo:',
+            'No liquidificador coloque os ovos e a',
+            'abóbora. Bata até que fique uma',
+            'massa lisa.',
+            'Leve ao forno por 45 minutos.',
+        ]);
+
+        $draft = $this->service()->parse($text);
+
+        $this->assertSame(['2 xícaras de abóbora picada e descascada (350 gramas)', '3 ovos'], $draft['ingredients']);
+        $this->assertSame([
+            'No liquidificador coloque os ovos e a abóbora. Bata até que fique uma massa lisa.',
+            'Leve ao forno por 45 minutos.',
+        ], $draft['instructions']);
+    }
+
+    public function test_keeps_sub_recipes_under_a_label_and_tips_as_notes(): void
+    {
+        $text = implode("\n", [
+            'Ingredientes',
+            'Bolo de coco',
+            '3 ovos',
+            'Preparo:',
+            'Bata tudo.',
+            'Cobertura',
+            'Bolo de coco',
+            '1 lata de leite condensado',
+            'Preparo',
+            'Leve ao fogo até engrossar.',
+            'Anote essa dica:',
+            'Use forma de 22 cm.',
+        ]);
+
+        $draft = $this->service()->parse($text, 'Bolo de coco');
+
+        $this->assertSame('Bolo de coco', $draft['title']);
+        // The title repeated under each header is not an ingredient.
+        $this->assertSame(['3 ovos', 'Cobertura:', '1 lata de leite condensado'], $draft['ingredients']);
+        $this->assertSame(['Bata tudo.', 'Cobertura:', 'Leve ao fogo até engrossar.'], $draft['instructions']);
+        $this->assertSame('Use forma de 22 cm.', $draft['notes']);
+    }
+
+    public function test_guesses_the_title_when_the_text_opens_on_a_header(): void
+    {
+        $draft = $this->service()->parse("Ingredientes\nBolo de Queijo\n3 ovos\nPreparo:\nBata tudo.");
+
+        $this->assertSame('Bolo de Queijo', $draft['title']);
+        $this->assertSame(['3 ovos'], $draft['ingredients']);
+    }
 }

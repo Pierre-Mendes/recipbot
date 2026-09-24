@@ -5,6 +5,7 @@ namespace Tests\Unit\Services;
 use App\Exceptions\RecipeScrapingException;
 use App\Services\RecipeScraperService;
 use App\Services\SsrfGuard;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Tests\Doubles\FakeHostResolver;
 use Tests\TestCase;
@@ -17,6 +18,9 @@ class RecipeScraperServiceTest extends TestCase
     {
         $guard = new SsrfGuard(new FakeHostResolver([
             'tudogostoso.com.br' => ['203.0.113.10'],
+            'www.tudogostoso.com.br' => ['203.0.113.10'],
+            'receitas.globo.com' => ['203.0.113.20'],
+            'gshow.globo.com' => ['203.0.113.21'],
         ]));
 
         return new RecipeScraperService($guard);
@@ -205,5 +209,138 @@ class RecipeScraperServiceTest extends TestCase
         }
 
         Http::assertNothingSent();
+    }
+
+    private function recipeHtml(array $node): string
+    {
+        return '<script type="application/ld+json">'.json_encode($node, JSON_UNESCAPED_UNICODE).'</script>';
+    }
+
+    public function test_follows_a_redirect_to_another_whitelisted_host(): void
+    {
+        // receitas.globo.com now answers every recipe with a redirect to
+        // gshow.globo.com; refusing redirects broke all Globo imports.
+        $target = 'https://gshow.globo.com/receitas/bolo-de-fuba.ghtml';
+
+        Http::fake([
+            'https://receitas.globo.com/*' => Http::response('', 301, ['Location' => $target]),
+            $target => Http::response($this->recipeHtml([
+                '@type' => 'Recipe',
+                'name' => 'Bolo de fubá',
+                'recipeIngredient' => ['2 xícaras de fubá'],
+            ]), 200),
+        ]);
+
+        $result = $this->service()->extract('https://receitas.globo.com/bolo-de-fuba.ghtml');
+
+        $this->assertSame('Bolo de fubá', $result['title']);
+    }
+
+    public function test_resolves_a_path_relative_redirect_against_the_current_host(): void
+    {
+        Http::fake([
+            self::URL => Http::response('', 302, ['Location' => '/receita/1-bolo-novo.html']),
+            'https://tudogostoso.com.br/receita/1-bolo-novo.html' => Http::response($this->recipeHtml([
+                '@type' => 'Recipe',
+                'name' => 'Bolo',
+                'recipeIngredient' => ['3 ovos'],
+            ]), 200),
+        ]);
+
+        $this->assertSame('Bolo', $this->service()->extract(self::URL)['title']);
+    }
+
+    public function test_rejects_a_redirect_that_leaves_the_whitelist(): void
+    {
+        Http::fake([
+            self::URL => Http::response('', 302, ['Location' => 'https://evil.com/steal']),
+        ]);
+
+        try {
+            $this->service()->extract(self::URL);
+            $this->fail('Expected RecipeScrapingException was not thrown.');
+        } catch (RecipeScrapingException $e) {
+            $this->assertSame('Domain not whitelisted.', $e->getMessage());
+        }
+
+        Http::assertSentCount(1);
+    }
+
+    public function test_gives_up_after_too_many_redirects(): void
+    {
+        Http::fake([
+            self::URL => Http::response('', 302, ['Location' => self::URL]),
+        ]);
+
+        $this->expectException(RecipeScrapingException::class);
+        $this->expectExceptionMessage('Too many redirects.');
+
+        $this->service()->extract(self::URL);
+    }
+
+    public function test_identifies_as_a_browser_instead_of_the_http_library(): void
+    {
+        Http::fake([
+            self::URL => Http::response($this->recipeHtml([
+                '@type' => 'Recipe',
+                'name' => 'Bolo',
+                'recipeIngredient' => ['3 ovos'],
+            ]), 200),
+        ]);
+
+        $this->service()->extract(self::URL);
+
+        Http::assertSent(fn (Request $request) => str_starts_with($request->header('User-Agent')[0] ?? '', 'Mozilla/5.0')
+            && str_contains($request->header('Accept-Language')[0] ?? '', 'pt-BR'));
+    }
+
+    public function test_finds_a_recipe_nested_in_main_entity_with_sectioned_instructions(): void
+    {
+        $html = $this->recipeHtml([
+            '@context' => 'https://schema.org',
+            '@graph' => [
+                ['@type' => 'Organization', 'name' => 'Globo'],
+                [
+                    '@type' => 'WebPage',
+                    'mainEntity' => [
+                        '@type' => ['Recipe', 'NewsArticle'],
+                        'name' => 'Bolo de milho',
+                        'recipeIngredient' => ['1 lata de milho'],
+                        'recipeInstructions' => [
+                            [
+                                '@type' => 'HowToSection',
+                                'name' => 'Massa',
+                                'itemListElement' => [
+                                    ['@type' => 'HowToStep', 'text' => 'Bata o milho.'],
+                                    ['@type' => 'HowToStep', 'text' => 'Asse por 40 minutos.'],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        Http::fake([self::URL => Http::response($html, 200)]);
+
+        $result = $this->service()->extract(self::URL);
+
+        $this->assertSame('Bolo de milho', $result['title']);
+        $this->assertSame(['Bata o milho.', 'Asse por 40 minutos.'], $result['instructions']);
+    }
+
+    public function test_splits_a_single_html_instruction_string_into_steps(): void
+    {
+        Http::fake([self::URL => Http::response($this->recipeHtml([
+            '@type' => 'Recipe',
+            'name' => 'Pudim',
+            'recipeIngredient' => ['1 lata de leite condensado'],
+            'recipeInstructions' => '<p>Bata tudo.</p><p>Asse em banho-maria.</p>',
+        ]), 200)]);
+
+        $this->assertSame(
+            ['Bata tudo.', 'Asse em banho-maria.'],
+            $this->service()->extract(self::URL)['instructions']
+        );
     }
 }

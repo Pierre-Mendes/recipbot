@@ -3,6 +3,8 @@ import type {
   ApiResponse,
   FromUrlInput,
   PaginatedRecipes,
+  PdfImportAnalysis,
+  PdfRecipeGroup,
   Recipe,
   RecipeDraft,
   RecipeFormInput,
@@ -104,6 +106,7 @@ function normalizeDraft(raw: Partial<RecipeDraft> & { id: string }): RecipeDraft
     instructions: Array.isArray(raw.instructions) ? raw.instructions : [],
     tags: Array.isArray(raw.tags) ? raw.tags : [],
     source_url: raw.source_url ?? null,
+    notes: raw.notes ?? null,
   }
 }
 
@@ -145,6 +148,33 @@ export async function importRecipeFile(file: File): Promise<RecipeDraft> {
   form.append('file', file)
   const { data } = await apiClient.post('/recipes/import-file', form)
   return unwrapDraft(data)
+}
+
+/**
+ * Upload a PDF (possibly a whole e-book) and get back its pages plus a
+ * suggestion of which pages form which recipe. Nothing is drafted yet: the
+ * user confirms or corrects the grouping first.
+ */
+export async function analyzeRecipePdf(file: File): Promise<PdfImportAnalysis> {
+  const form = new FormData()
+  form.append('file', file)
+  const { data } = await apiClient.post<ApiResponse<PdfImportAnalysis>>('/recipes/import-pdf', form)
+  return data.data
+}
+
+/**
+ * Turn the confirmed page groups of an analyzed PDF into review drafts, one
+ * per recipe, in the same order.
+ */
+export async function confirmRecipePdf(
+  importId: string,
+  recipes: PdfRecipeGroup[],
+): Promise<RecipeDraft[]> {
+  const { data } = await apiClient.post<ApiResponse<Array<Partial<RecipeDraft> & { id: string }>>>(
+    `/recipes/import-pdf/${importId}/drafts`,
+    { recipes },
+  )
+  return (data.data ?? []).map(normalizeDraft)
 }
 
 export async function searchRecipes(input: SearchInput): Promise<PaginatedRecipes> {

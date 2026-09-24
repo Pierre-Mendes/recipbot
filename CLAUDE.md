@@ -235,7 +235,7 @@ recipbot/
 - PHPStan level 8 no backend
 
 ### Scraper Protection (SSRF A10)
-- Domain whitelist (tudogostoso.com.br, cybercook.com.br, receitas.globo.com)
+- Domain whitelist (tudogostoso.com.br, receitas.globo.com, gshow.globo.com) — redirects seguidos só dentro da whitelist
 - Bloqueia IPs privados (10.*, 192.168.*, 172.16-31.*)
 - Timeout: 10 segundos
 - Limite: 5MB response
