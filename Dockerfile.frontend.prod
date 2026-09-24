@@ -1,0 +1,26 @@
+# Frontend de PRODUÇÃO: build estático do Vue servido pelo nginx.
+#
+# O Dockerfile.frontend (dev-server, Vite :5173) segue existindo para o Compose
+# (hot-reload no sandbox). ESTE aqui é o que o K3s/produção consome.
+#
+# A API é RELATIVA (/api): o SPA chama o MESMO host em /api, então basta um
+# reverse-proxy/Ingress same-origin (/api -> app, / -> este nginx) e não há CORS.
+
+FROM node:22-alpine AS build
+WORKDIR /app
+
+# Instala deps a partir do lockfile (camada cacheável).
+COPY frontend/package*.json ./
+RUN npm ci
+
+# Código e build. VITE_API_URL é lido em tempo de BUILD pelo Vite
+# (frontend/src/api/client.ts: baseURL = import.meta.env.VITE_API_URL ?? ...).
+COPY frontend/ .
+ENV VITE_API_URL=/api
+RUN npm run build
+
+# --- runtime: nginx servindo o dist estático -------------------------------
+FROM nginx:1.27-alpine
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY docker/nginx-frontend.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80

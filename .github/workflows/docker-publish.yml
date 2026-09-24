@@ -30,7 +30,7 @@ jobs:
           - image: backend
             dockerfile: Dockerfile.backend
           - image: frontend
-            dockerfile: Dockerfile.frontend
+            dockerfile: Dockerfile.frontend.prod
           - image: postgres
             dockerfile: Dockerfile.postgres
     steps:
