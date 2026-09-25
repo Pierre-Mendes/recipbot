@@ -85,7 +85,7 @@ jobs:
       # Runner entra na tailnet com uma auth key EFÊMERA (tag:ci). A ACL da
       # tailnet deve permitir tag:ci -> <node do k3s>:6443 e nada além.
       - name: Conectar na tailnet
-        uses: tailscale/github-action@v2
+        uses: tailscale/github-action@6cae46e2d796f265265cfcf628b72a32b4d7cade # v3.3.0
         with:
           authkey: ${{ secrets.TS_AUTHKEY }}
           hostname: gh-recipbot-deploy
