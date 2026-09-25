@@ -3,7 +3,7 @@ name: Publish Images
 # Builda e publica as imagens do stack (backend, frontend, postgres) no GHCR,
 # para que o K3s (e qualquer orquestrador) possa puxá-las por nome em vez de
 # buildar Dockerfile no host. Em PR só valida o build; publica no push pra
-# main e em tags v*.
+# main e em tags v*. Depois de publicar (só na main), faz deploy no K3s.
 on:
   push:
     branches: [main]
@@ -72,3 +72,49 @@ jobs:
           # + extensões PHP) é o gargalo; o cache corta o tempo nos re-runs.
           cache-from: type=gha,scope=recipbot-${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=recipbot-${{ matrix.image }}
+
+  # Deploy no K3s (ambiente recipbot-stg) após as imagens publicarem. Só na
+  # main: PR e tags não disparam. `needs: publish` garante que as imagens SHA
+  # já existem no GHCR antes de rolar.
+  deploy:
+    name: Deploy to K3s (recipbot-stg)
+    needs: publish
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      # Runner entra na tailnet com uma auth key EFÊMERA (tag:ci). A ACL da
+      # tailnet deve permitir tag:ci -> <node do k3s>:6443 e nada além.
+      - name: Conectar na tailnet
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TS_AUTHKEY }}
+          hostname: gh-recipbot-deploy
+
+      # kubectl já vem instalado no runner ubuntu-latest. Aponta pro cluster
+      # pela tailnet. --insecure-skip-tls-verify: o cert do k3s não tem o IP da
+      # tailnet no SAN; a conexão já é autenticada/cifrada pelo WireGuard.
+      - name: Configurar acesso ao cluster
+        run: |
+          kubectl config set-cluster k3s \
+            --server="${{ secrets.KUBE_API }}" --insecure-skip-tls-verify=true
+          kubectl config set-credentials ci --token="${{ secrets.KUBE_TOKEN }}"
+          kubectl config set-context k3s --cluster=k3s --user=ci --namespace=recipbot-stg
+          kubectl config use-context k3s
+
+      # set image pina a tag SHA do commit (determinístico). app/queue/scheduler
+      # compartilham a imagem do backend; frontend tem a sua. postgres/redis
+      # (dados/infra) NÃO são rolados aqui.
+      - name: Rolar as imagens novas
+        env:
+          OWNER: ${{ github.repository_owner }}
+          SHA: ${{ github.sha }}
+        run: |
+          OWNER_LC="$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')"
+          BACK="ghcr.io/${OWNER_LC}/recipbot-backend:sha-${SHA}"
+          FRONT="ghcr.io/${OWNER_LC}/recipbot-frontend:sha-${SHA}"
+          kubectl -n recipbot-stg set image deployment/recipbot-app       app="$BACK"
+          kubectl -n recipbot-stg set image deployment/recipbot-queue     queue="$BACK"
+          kubectl -n recipbot-stg set image deployment/recipbot-scheduler scheduler="$BACK"
+          kubectl -n recipbot-stg set image deployment/recipbot-frontend  frontend="$FRONT"
+          kubectl -n recipbot-stg rollout status deployment/recipbot-app       --timeout=240s
+          kubectl -n recipbot-stg rollout status deployment/recipbot-frontend  --timeout=240s
