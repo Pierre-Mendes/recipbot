@@ -86,14 +86,15 @@ test.describe('recipe CRUD (manual entry)', () => {
     await expect(titleInput).toHaveJSProperty('validity.valid', false)
   })
 
-  test('shows an error when URL import is blocked', async ({ page }) => {
+  test('explains why when URL import is blocked', async ({ page }) => {
     await page.getByRole('button', { name: 'Nova Receita' }).click()
     await page.getByRole('button', { name: 'Importar de URL' }).click()
     await page.getByLabel('URL da Receita').fill('https://example.com/not-whitelisted')
     await page.getByRole('button', { name: 'Importar receita' }).click()
 
+    // The API's reason is translated, instead of a generic failure message.
     await expect(
-      page.getByText('Não foi possível importar a receita desta URL.').first(),
+      page.getByText('Este site ainda não é suportado.', { exact: false }).first(),
     ).toBeVisible()
   })
 })
