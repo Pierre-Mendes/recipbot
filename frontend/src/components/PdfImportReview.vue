@@ -1,12 +1,22 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
-import { ExternalLink, FileText, Loader2, Plus, Trash2 } from 'lucide-vue-next'
+import {
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  FileText,
+  Loader2,
+  Plus,
+  Trash2,
+} from 'lucide-vue-next'
 
 import type { PdfImportAnalysis, PdfRecipeGroup } from '@/types'
 import Card from './ui/Card.vue'
 import CardContent from './ui/CardContent.vue'
 import Input from './ui/Input.vue'
 import Button from './ui/Button.vue'
+import PdfPageCanvas from './PdfPageCanvas.vue'
+import { usePdfDocument } from '@/composables/usePdfDocument'
 
 /**
  * Page picker for a (possibly multi-recipe) PDF. Shows the document next to
@@ -49,14 +59,20 @@ for (const group of props.analysis.recipes) {
 
 const currentPage = ref(props.analysis.recipes[0]?.pages[0] ?? 1)
 
-// A blob URL lets the browser's own PDF viewer show the file without another
-// upload/download round trip. jsdom (tests) has no createObjectURL.
+// Pages are drawn locally with pdf.js (no re-download). jsdom (tests) has no
+// createObjectURL; the blob URL only backs the "open in a new tab" link.
+const { document: pdfDocument, failed: previewFailed } = usePdfDocument(props.file)
 const previewUrl =
   props.file && typeof URL.createObjectURL === 'function' ? URL.createObjectURL(props.file) : null
 
 onBeforeUnmount(() => {
   if (previewUrl) URL.revokeObjectURL(previewUrl)
 })
+
+function goToPage(delta: number) {
+  const target = currentPage.value + delta
+  if (target >= 1 && target <= props.analysis.page_count) currentPage.value = target
+}
 
 function pagesOf(key: number): number[] {
   return props.analysis.pages
@@ -116,6 +132,11 @@ function recipeLabel(recipe: EditableRecipe, index: number): string {
   return recipe.title.trim() || `Receita ${index + 1}`
 }
 
+function assignedLabel(page: number): string {
+  const index = recipes.value.findIndex((recipe) => recipe.key === assignment.value[page])
+  return index === -1 ? 'Não é receita' : recipeLabel(recipes.value[index]!, index)
+}
+
 function confirm() {
   if (groups.value.length > 0) emit('confirm', groups.value)
 }
@@ -147,22 +168,39 @@ function confirm() {
             <ExternalLink class="h-3.5 w-3.5" />
           </a>
         </div>
-        <object
-          v-if="previewUrl"
-          :key="currentPage"
-          :data="`${previewUrl}#page=${currentPage}`"
-          type="application/pdf"
-          class="h-[60vh] w-full bg-muted/30"
-          :aria-label="`Pré-visualização da página ${currentPage}`"
-        >
-          <p class="p-4 text-sm text-muted-foreground">
-            Seu navegador não exibe PDFs aqui. Use "Abrir em nova aba" ou o texto de cada página ao
-            lado.
-          </p>
-        </object>
-        <p v-else class="p-4 text-sm text-muted-foreground">
+        <div v-if="pdfDocument" class="max-h-[50vh] overflow-y-auto bg-muted/30 lg:max-h-[70vh]">
+          <PdfPageCanvas :document="pdfDocument" :page-number="currentPage" />
+        </div>
+        <p v-else-if="previewFailed || !file" class="p-4 text-sm text-muted-foreground">
           Pré-visualização indisponível. Use o texto de cada página para conferir.
         </p>
+        <div v-else class="flex h-[40vh] items-center justify-center text-muted-foreground">
+          <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+          Carregando pré-visualização...
+        </div>
+        <div class="flex items-center justify-between border-t border-border/50 px-2 py-1 text-sm">
+          <Button
+            variant="ghost"
+            size="sm"
+            type="button"
+            aria-label="Página anterior"
+            :disabled="currentPage <= 1"
+            @click="goToPage(-1)"
+          >
+            <ChevronLeft class="h-4 w-4" />
+          </Button>
+          <span class="text-muted-foreground">{{ assignedLabel(currentPage) }}</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            type="button"
+            aria-label="Próxima página"
+            :disabled="currentPage >= analysis.page_count"
+            @click="goToPage(1)"
+          >
+            <ChevronRight class="h-4 w-4" />
+          </Button>
+        </div>
       </Card>
 
       <div class="space-y-6">
@@ -222,7 +260,18 @@ function confirm() {
                   :aria-label="`Ver página ${page.number}`"
                   @click="currentPage = page.number"
                 >
-                  <FileText class="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span
+                    class="w-12 shrink-0 overflow-hidden rounded border border-border/60 bg-muted/30"
+                  >
+                    <PdfPageCanvas
+                      v-if="pdfDocument"
+                      :document="pdfDocument"
+                      :page-number="page.number"
+                      :render-width="96"
+                      lazy
+                    />
+                    <FileText v-else class="m-3 h-6 w-6 text-muted-foreground" />
+                  </span>
                   <span>
                     <span class="font-medium">Página {{ page.number }}</span>
                     <span class="block text-xs text-muted-foreground line-clamp-2">

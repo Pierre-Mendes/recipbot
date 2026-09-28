@@ -27,6 +27,8 @@ describe('PdfImportReview', () => {
     expect(screen.getByText('Encontramos 2 receitas neste PDF. Está certo?')).toBeInTheDocument()
     expect(screen.getByText('Páginas 2–3')).toBeInTheDocument()
     expect(screen.getByText('Sem texto (imagem)')).toBeInTheDocument()
+    // Without the file (or a browser pdf.js can run on) it falls back to text.
+    expect(screen.getByText(/Pré-visualização indisponível/)).toBeInTheDocument()
 
     await fireEvent.click(screen.getByRole('button', { name: 'Sim, importar 2 receitas' }))
 
@@ -77,5 +79,16 @@ describe('PdfImportReview', () => {
       ),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Sim, importar 0 receitas' })).toBeDisabled()
+  })
+
+  it('steps through pages and shows which recipe the current one belongs to', async () => {
+    render(PdfImportReview, { props: { analysis } })
+
+    expect(screen.getByText('Página 2 de 5')).toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Próxima página' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Próxima página' }))
+
+    expect(screen.getByText('Página 4 de 5')).toBeInTheDocument()
+    expect(screen.getByText('Bolo de coco', { selector: 'span' })).toBeInTheDocument()
   })
 })
