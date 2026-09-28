@@ -87,6 +87,31 @@ export interface RecipeDraft {
   notes?: string | null
 }
 
+/** One page of an analyzed PDF, as shown in the import page picker. */
+export interface PdfImportPage {
+  number: number
+  excerpt: string
+  has_text: boolean
+}
+
+/** A recipe inside a PDF: its (editable) title and 1-based page numbers. */
+export interface PdfRecipeGroup {
+  title: string | null
+  pages: number[]
+}
+
+/**
+ * Result of uploading a PDF for import: per-page excerpts plus the system's
+ * guess of which pages form which recipe. The user confirms or corrects the
+ * guess before any draft is created.
+ */
+export interface PdfImportAnalysis {
+  id: string
+  page_count: number
+  pages: PdfImportPage[]
+  recipes: PdfRecipeGroup[]
+}
+
 export interface SearchInput {
   tags?: string[]
   query?: string

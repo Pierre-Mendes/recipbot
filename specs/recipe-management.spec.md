@@ -21,7 +21,7 @@ US01 + US02: Users can create, read, update, and delete recipes with manual inpu
 
 ### AC02: URL Ingestion
 - [ ] User pastes URL → System extracts recipe
-- [ ] Supports: tudogostoso.com.br, cybercook.com.br, receitas.globo.com
+- [ ] Supports: tudogostoso.com.br, receitas.globo.com, gshow.globo.com
 - [ ] Extraction: Title, Ingredients, Instructions (if available)
 - [ ] User can edit extracted data before saving
 - [ ] **Performance**: Extraction < 10 seconds, timeout safety

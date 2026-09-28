@@ -5,6 +5,8 @@ import * as recipesApi from '@/api/recipes'
 import type {
   FromUrlInput,
   PaginationMeta,
+  PdfImportAnalysis,
+  PdfRecipeGroup,
   Recipe,
   RecipeDraft,
   RecipeFormInput,
@@ -91,6 +93,14 @@ export const useRecipesStore = defineStore('recipes', () => {
     return recipesApi.importRecipeFile(file)
   }
 
+  async function analyzePdf(file: File): Promise<PdfImportAnalysis> {
+    return recipesApi.analyzeRecipePdf(file)
+  }
+
+  async function confirmPdf(importId: string, groups: PdfRecipeGroup[]): Promise<RecipeDraft[]> {
+    return recipesApi.confirmRecipePdf(importId, groups)
+  }
+
   async function update(id: string, input: Partial<RecipeFormInput>): Promise<Recipe> {
     return recipesApi.updateRecipe(id, input)
   }
@@ -113,6 +123,8 @@ export const useRecipesStore = defineStore('recipes', () => {
     createFromUrl,
     previewFromUrl,
     importFile,
+    analyzePdf,
+    confirmPdf,
     update,
     remove,
   }

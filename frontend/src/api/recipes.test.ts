@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { apiClient } from '@/api/client'
 import {
+  confirmRecipePdf,
   createRecipe,
   createRecipeFromUrl,
   deleteRecipe,
@@ -151,6 +152,7 @@ describe('recipes api', () => {
     instructions: ['misture tudo'],
     tags: ['cafe'],
     source_url: 'https://www.tudogostoso.com.br/receita/1.html',
+    notes: null,
   }
 
   it('previewRecipeFromUrl posts to /recipes/preview-url and unwraps the draft envelope', async () => {
@@ -189,6 +191,7 @@ describe('recipes api', () => {
       instructions: [],
       tags: [],
       source_url: null,
+      notes: null,
     })
   })
 
@@ -228,5 +231,27 @@ describe('recipes api', () => {
     const result = await listTags()
 
     expect(result).toEqual(tags)
+  })
+
+  it('confirmRecipePdf posts the page groups and normalizes each returned draft', async () => {
+    const post = vi.spyOn(apiClient, 'post').mockResolvedValue({
+      data: {
+        data: [
+          { id: 'd1', title: 'Bolo', ingredients: ['3 ovos'], notes: 'Dica' },
+          { id: 'd2', title: 'Pudim', ingredients: null, instructions: null },
+        ],
+      },
+    })
+
+    const groups = [
+      { title: 'Bolo', pages: [3, 4] },
+      { title: null, pages: [7] },
+    ]
+    const drafts = await confirmRecipePdf('imp-1', groups)
+
+    expect(post).toHaveBeenCalledWith('/recipes/import-pdf/imp-1/drafts', { recipes: groups })
+    expect(drafts.map((d) => d.id)).toEqual(['d1', 'd2'])
+    expect(drafts[0]?.notes).toBe('Dica')
+    expect(drafts[1]?.ingredients).toEqual([])
   })
 })

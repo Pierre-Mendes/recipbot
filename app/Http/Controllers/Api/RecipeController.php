@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Exceptions\RecipeScrapingException;
+use App\Http\Requests\ConfirmPdfImportRequest;
 use App\Http\Requests\FromUrlRequest;
 use App\Http\Requests\ImportFileRequest;
+use App\Http\Requests\ImportPdfRequest;
 use App\Http\Requests\ImportSpreadsheetRequest;
 use App\Http\Requests\IndexRecipesRequest;
 use App\Http\Requests\StoreRecipeRequest;
@@ -13,6 +15,8 @@ use App\Http\Resources\RecipeResource;
 use App\Models\Recipe;
 use App\Models\User;
 use App\Services\RecipeDraftService;
+use App\Services\RecipePdfImportStore;
+use App\Services\RecipePdfSegmenter;
 use App\Services\RecipeScraperService;
 use App\Services\RecipeService;
 use App\Services\RecipeSpreadsheetService;
@@ -24,6 +28,7 @@ use Illuminate\Http\Response;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class RecipeController extends ApiController
 {
@@ -158,6 +163,91 @@ class RecipeController extends ApiController
         $id = $drafts->store($user, $draft);
 
         return $this->success(['id' => $id, ...$draft], 'Recipe draft created', status: 201);
+    }
+
+    /**
+     * Analyze a (possibly multi-recipe) PDF for the page picker: read its text
+     * page by page, suggest which pages form which recipe, and cache the text
+     * so the confirmation step doesn't need the file again. Nothing becomes a
+     * draft until the user confirms or corrects the suggestion.
+     */
+    public function importPdf(ImportPdfRequest $request, RecipeTextImportService $extractor, RecipePdfSegmenter $segmenter, RecipePdfImportStore $imports): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        /** @var UploadedFile $file */
+        $file = $request->file('file');
+
+        try {
+            $pages = $extractor->extractPdfPages($file->getRealPath());
+        } catch (\Exception) {
+            // pdfparser throws plain exceptions for encrypted/corrupt files.
+            return response()->json(['message' => 'Could not read this PDF.'], 422);
+        }
+
+        $maxPages = (int) config('recipbot.pdf_import.max_pages', 150);
+        if (count($pages) > $maxPages) {
+            return response()->json(['message' => "This PDF has too many pages (max {$maxPages})."], 422);
+        }
+
+        if (array_filter($pages, fn (string $page) => $page !== '') === []) {
+            return response()->json(['message' => 'This PDF has no readable text (it may be a scanned image).'], 422);
+        }
+
+        $id = $imports->store($user, $pages);
+
+        return $this->success([
+            'id' => $id,
+            'page_count' => count($pages),
+            'pages' => array_map(fn (string $text, int $index) => [
+                'number' => $index + 1,
+                'excerpt' => mb_substr(trim(preg_replace('/\s+/u', ' ', $text) ?? $text), 0, 180),
+                'has_text' => $text !== '',
+            ], $pages, array_keys($pages)),
+            'recipes' => $segmenter->segment($pages),
+        ], 'PDF analyzed', status: 201);
+    }
+
+    /**
+     * Turn the user-confirmed page groups of an analyzed PDF into one review
+     * draft per recipe - still nothing is saved until each draft is reviewed.
+     */
+    public function confirmPdfImport(ConfirmPdfImportRequest $request, RecipeTextImportService $extractor, RecipePdfImportStore $imports, RecipeDraftService $drafts, string $import): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        $pages = $imports->find($user, $import);
+        if ($pages === null) {
+            return response()->json(['message' => 'PDF import not found or expired.'], 404);
+        }
+
+        /** @var list<array{title?: string|null, pages: list<int>}> $groups */
+        $groups = $request->validated('recipes');
+
+        foreach ($groups as $index => $group) {
+            foreach ($group['pages'] as $page) {
+                if ($page > count($pages)) {
+                    throw ValidationException::withMessages([
+                        "recipes.{$index}.pages" => 'Page out of range',
+                    ]);
+                }
+            }
+        }
+
+        $created = [];
+        foreach ($groups as $group) {
+            $numbers = $group['pages'];
+            sort($numbers);
+
+            $text = implode("\n", array_map(fn (int $page) => $pages[$page - 1], $numbers));
+            $draft = $extractor->parse($text, $group['title'] ?? null);
+
+            $created[] = ['id' => $drafts->store($user, $draft), ...$draft];
+        }
+
+        return $this->success($created, 'Recipe drafts created', status: 201);
     }
 
     /**

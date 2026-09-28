@@ -34,4 +34,16 @@ return [
     'drafts' => [
         'ttl_minutes' => (int) env('RECIPE_DRAFT_TTL_MINUTES', 1440),
     ],
+
+    /*
+    | Multi-recipe PDF import: the upload is analyzed once, its per-page text
+    | cached while the user picks which pages form each recipe. The PHP
+    | upload_max_filesize/post_max_size (docker/php/uploads.ini) must stay
+    | above max_file_kb, otherwise PHP drops the file before validation.
+    */
+    'pdf_import' => [
+        'max_file_kb' => (int) env('PDF_IMPORT_MAX_FILE_KB', 20480),
+        'max_pages' => (int) env('PDF_IMPORT_MAX_PAGES', 150),
+        'ttl_minutes' => (int) env('PDF_IMPORT_TTL_MINUTES', 120),
+    ],
 ];
