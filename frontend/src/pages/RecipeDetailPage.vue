@@ -22,6 +22,7 @@ import { useRecipesStore } from '@/stores/recipes'
 import { useToast } from '@/composables/useToast'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import Button from '@/components/ui/Button.vue'
+import BitMascot from '@/components/brand/BitMascot.vue'
 import Card from '@/components/ui/Card.vue'
 import CardContent from '@/components/ui/CardContent.vue'
 import Skeleton from '@/components/ui/Skeleton.vue'
@@ -201,7 +202,7 @@ function noteSegments(text: string): { text: string; href: string | null }[] {
     v-else-if="notFound"
     class="flex flex-col items-center justify-center py-20 text-center animate-in fade-in"
   >
-    <ChefHat class="h-16 w-16 text-muted-foreground/30 mb-4" />
+    <BitMascot pose="oops" :size="120" class="mb-4" />
     <h2 class="text-2xl font-semibold mb-2">Receita não encontrada</h2>
     <p class="text-muted-foreground mb-6">
       A receita que você está procurando não existe ou foi removida.

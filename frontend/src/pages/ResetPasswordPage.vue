@@ -45,7 +45,7 @@ async function handleSubmit() {
       </div>
     </div>
 
-    <Card class="border-border/50 shadow-xl">
+    <Card class="shadow-sm">
       <CardHeader class="space-y-1 text-center pb-6">
         <CardTitle class="text-2xl font-bold">Redefinir Senha</CardTitle>
         <CardDescription>Digite sua nova senha</CardDescription>

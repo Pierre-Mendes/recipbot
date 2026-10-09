@@ -204,6 +204,7 @@ recipbot/
 │   ├── API-SPEC.md
 │   ├── DATABASE-SCHEMA.md
 │   ├── DEPLOYMENT.md
+│   ├── DESIGN-SYSTEM.md
 │   └── SETUP.md
 │
 ├── .claude/                     # Claude Code config
@@ -280,6 +281,7 @@ DB_HOST=recipbot-staging.c123.us-east-1.rds.amazonaws.com
 | **constitution.md** | 10 min | 7 princípios + padrões |
 | **HARNESS-GUIDE.md** | 15 min | Como trabalhar com harness |
 | **OWASP_CHECKLIST.md** | 10 min | Segurança validada |
+| **docs/DESIGN-SYSTEM.md** | 10 min | Design System "Feira": tokens, marca, mascote Bit, componentes |
 | **CLAUDE_PROMPT_START.md** | Ref | 8 prompts prontos |
 
 ---
@@ -301,7 +303,7 @@ DB_HOST=recipbot-staging.c123.us-east-1.rds.amazonaws.com
 - **Language**: TypeScript (strict mode)
 - **State**: Pinia
 - **UI Components**: ShadcN Vue
-- **Styling**: Tailwind CSS 4
+- **Styling**: Tailwind CSS 4 + Design System "Feira" (`docs/DESIGN-SYSTEM.md`)
 - **Testing**: Vitest + Testing Library
 - **Build**: Vite 5
 - **Linting**: ESLint + Prettier

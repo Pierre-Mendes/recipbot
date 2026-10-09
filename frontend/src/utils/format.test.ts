@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { relativeTime, titleGradient } from '@/utils/format'
+import { RECIPE_TONES, recipeTone, relativeTime, titleInitial } from '@/utils/format'
 
 describe('relativeTime', () => {
   it('returns null for missing or unparseable dates', () => {
@@ -17,16 +17,33 @@ describe('relativeTime', () => {
   })
 })
 
-describe('titleGradient', () => {
+describe('recipeTone', () => {
   it('is deterministic for the same title', () => {
-    expect(titleGradient('Bolo de Cenoura')).toBe(titleGradient('Bolo de Cenoura'))
+    expect(recipeTone('Bolo de Cenoura')).toBe(recipeTone('Bolo de Cenoura'))
   })
 
-  it('produces a CSS linear-gradient string', () => {
-    expect(titleGradient('Feijoada')).toMatch(/^linear-gradient\(/)
+  it('always returns one of the design-system tones', () => {
+    for (const title of ['Feijoada', 'Bolo', 'Torta', 'Pão de queijo', '']) {
+      expect(RECIPE_TONES).toContain(recipeTone(title))
+    }
   })
 
-  it('differs for different titles', () => {
-    expect(titleGradient('Bolo')).not.toBe(titleGradient('Torta'))
+  it('spreads different titles across more than one tone', () => {
+    const tones = new Set(
+      ['Bolo', 'Torta', 'Feijoada', 'Moqueca', 'Risoto', 'Pudim'].map(recipeTone),
+    )
+    expect(tones.size).toBeGreaterThan(1)
+  })
+})
+
+describe('titleInitial', () => {
+  it('returns the first letter upper-cased, keeping accents', () => {
+    expect(titleInitial('bolo de fubá')).toBe('B')
+    expect(titleInitial('  ética no forno')).toBe('É')
+  })
+
+  it('skips leading punctuation and falls back for empty titles', () => {
+    expect(titleInitial('"Pudim" da vó')).toBe('P')
+    expect(titleInitial('')).toBe('?')
   })
 })

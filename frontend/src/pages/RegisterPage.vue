@@ -40,7 +40,7 @@ async function handleSubmit() {
       </div>
     </div>
 
-    <Card class="border-border/50 shadow-xl">
+    <Card class="shadow-sm">
       <CardHeader class="space-y-1 text-center pb-6">
         <CardTitle class="text-2xl font-bold">Criar uma conta</CardTitle>
         <CardDescription>Preencha seus dados para entrar no RecipBot</CardDescription>

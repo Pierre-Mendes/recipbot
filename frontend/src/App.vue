@@ -23,7 +23,7 @@ onMounted(() => {
 <template>
   <div class="min-h-screen bg-background flex flex-col">
     <NavBar />
-    <main class="mx-auto max-w-4xl w-full px-4 py-6 flex-1">
+    <main class="mx-auto max-w-6xl w-full px-4 py-8 sm:px-6 flex-1">
       <RouterView v-slot="{ Component, route }">
         <component :is="Component" :key="route.path" />
       </RouterView>
