@@ -33,15 +33,15 @@ function handleSubmit() {
   <div class="mb-6 space-y-4">
     <form class="flex gap-3" @submit.prevent="handleSubmit">
       <div class="relative flex-1">
-        <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search class="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           v-model="query"
           type="search"
           placeholder="Buscar por título ou ingrediente..."
-          class="pl-9 h-11 bg-background/50 backdrop-blur-sm"
+          class="pl-10 h-12 rounded-full bg-muted text-base"
         />
       </div>
-      <Button type="submit" size="default" class="h-11 px-6 shadow-sm"> Buscar </Button>
+      <Button type="submit" class="h-12 rounded-full px-6"> Buscar </Button>
     </form>
 
     <div v-if="props.availableTags.length" class="flex flex-wrap gap-2">
@@ -49,17 +49,18 @@ function handleSubmit() {
         v-for="tag in props.availableTags"
         :key="tag.name"
         type="button"
-        class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer"
+        :aria-pressed="selectedTags.includes(tag.name)"
+        class="inline-flex h-9 items-center rounded-full border px-3.5 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 cursor-pointer"
         :class="
           selectedTags.includes(tag.name)
-            ? 'border-transparent bg-primary text-primary-foreground hover:bg-primary/80 shadow-sm'
+            ? 'border-transparent bg-primary text-primary-foreground hover:bg-primary/90'
             : 'border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground'
         "
         @click="toggleTag(tag.name)"
       >
         {{ tag.name }}
         <span
-          class="ml-1.5 rounded-full px-1.5 py-0.5 text-[10px]"
+          class="ml-1.5 rounded-full px-1.5 py-0.5 font-mono text-[11px]"
           :class="
             selectedTags.includes(tag.name)
               ? 'bg-primary-foreground/20'

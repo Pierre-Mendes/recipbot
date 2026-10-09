@@ -11,9 +11,9 @@ const icons = {
 }
 
 const variantClasses = {
-  success: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
-  error: 'border-destructive/30 bg-destructive/10 text-destructive',
-  info: 'border-primary/30 bg-primary/10 text-primary',
+  success: 'border-primary/30 bg-secondary text-secondary-foreground',
+  error: 'border-destructive/30 bg-card text-destructive',
+  info: 'border-border bg-card text-foreground',
 }
 </script>
 
@@ -35,14 +35,16 @@ const variantClasses = {
           v-for="toast in toasts"
           :key="toast.id"
           :class="[
-            'pointer-events-auto flex items-start gap-3 rounded-lg border px-4 py-3 shadow-lg backdrop-blur-sm',
+            'pointer-events-auto flex items-start gap-3 rounded-lg border px-4 py-3 shadow-lg',
             variantClasses[toast.variant],
           ]"
         >
           <component :is="icons[toast.variant]" class="h-5 w-5 mt-0.5 shrink-0" />
           <p class="text-sm font-medium flex-1">{{ toast.message }}</p>
           <button
-            class="shrink-0 rounded-full p-0.5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+            type="button"
+            aria-label="Fechar notificação"
+            class="shrink-0 rounded-full p-1 hover:bg-foreground/10 transition-colors"
             @click="removeToast(toast.id)"
           >
             <X class="h-4 w-4" />

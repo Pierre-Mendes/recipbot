@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ChefHat, Loader2 } from 'lucide-vue-next'
+import { Loader2 } from 'lucide-vue-next'
 
 import { useAuthStore } from '@/stores/auth'
+import BitMascot from '@/components/brand/BitMascot.vue'
 import Card from '@/components/ui/Card.vue'
 import CardContent from '@/components/ui/CardContent.vue'
 import CardHeader from '@/components/ui/CardHeader.vue'
@@ -30,15 +31,11 @@ async function handleSubmit() {
 
 <template>
   <div class="mx-auto max-w-md animate-in fade-in zoom-in-95 duration-500 pt-8">
-    <div class="flex justify-center mb-8">
-      <div
-        class="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg"
-      >
-        <ChefHat class="h-10 w-10" />
-      </div>
+    <div class="flex justify-center mb-6">
+      <BitMascot pose="hello" :size="120" />
     </div>
 
-    <Card class="border-border/50 shadow-xl">
+    <Card class="shadow-sm">
       <CardHeader class="space-y-1 text-center pb-6">
         <CardTitle class="text-2xl font-bold">Bem-vindo de volta</CardTitle>
         <CardDescription>Digite seu e-mail para entrar na sua conta</CardDescription>

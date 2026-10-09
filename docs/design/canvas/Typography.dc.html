@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>RecipBot — Tipografia, espaço e forma</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&amp;family=Instrument+Sans:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2F6B3B}a:hover{color:#234F2C}
+</style>
+</helmet>
+<div style="width: 1280px; height: 1060px; box-sizing: border-box; padding: 64px; background: #FBFAF7; color: #1C1B19; font-family: 'Instrument Sans', system-ui, sans-serif; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 56px">
+  <div style="display: flex; flex-direction: column; gap: 28px">
+    <div>
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #5B5649">02 — Fundamentos</div>
+      <h1 style="margin: 8px 0 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 48px; letter-spacing: -0.03em">Tipografia</h1>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+      <div style="background: #FFFFFF; border: 1px solid #E7E3D9; border-radius: 16px; padding: 16px">
+        <div style="font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 40px; line-height: 1">Aa</div>
+        <div style="font-weight: 600; margin-top: 10px">Bricolage Grotesque</div>
+        <div style="font-size: 13px; color: #5B5649">Display e títulos · 500–800</div>
+      </div>
+      <div style="background: #FFFFFF; border: 1px solid #E7E3D9; border-radius: 16px; padding: 16px">
+        <div style="font-weight: 500; font-size: 40px; line-height: 1">Aa</div>
+        <div style="font-weight: 600; margin-top: 10px">Instrument Sans</div>
+        <div style="font-size: 13px; color: #5B5649">Interface e corpo · 400–600</div>
+      </div>
+      <div style="background: #FFFFFF; border: 1px solid #E7E3D9; border-radius: 16px; padding: 16px">
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 36px; line-height: 1.1">250g</div>
+        <div style="font-weight: 600; margin-top: 10px">JetBrains Mono</div>
+        <div style="font-size: 13px; color: #5B5649">Quantidades e tempos · 400–500</div>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; border-top: 1px solid #E7E3D9">
+      <sc-for list="{{scale}}" as="s" hint-placeholder-count="8">
+        <div style="display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 16px; align-items: baseline; padding: 12px 0; border-bottom: 1px solid #E7E3D9">
+          <div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500">{{s.token}}</div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #5B5649; margin-top: 2px">{{s.spec}}</div>
+          </div>
+          <div style="{{s.style}}">{{s.sample}}</div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 36px; padding-top: 4px">
+    <div>
+      <h2 style="margin: 0 0 14px; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 24px; letter-spacing: -0.02em">Espaçamento · base 4px</h2>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <sc-for list="{{space}}" as="sp" hint-placeholder-count="8">
+          <div style="display: grid; grid-template-columns: 64px 44px minmax(0, 1fr); gap: 12px; align-items: center">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px">{{sp.token}}</span>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #5B5649">{{sp.px}}</span>
+            <span style="height: 12px; border-radius: 3px; background: #9CC79E; width: {{sp.w}}"></span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <div>
+      <h2 style="margin: 0 0 14px; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 24px; letter-spacing: -0.02em">Raios</h2>
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px">
+        <div style="display: flex; flex-direction: column; gap: 6px"><div style="height: 64px; background: #E3EFE2; border: 1.5px solid #2F6B3B; border-radius: 6px"></div><span style="font-family: 'JetBrains Mono', monospace; font-size: 11px">sm · 6px</span></div>
+        <div style="display: flex; flex-direction: column; gap: 6px"><div style="height: 64px; background: #E3EFE2; border: 1.5px solid #2F6B3B; border-radius: 10px"></div><span style="font-family: 'JetBrains Mono', monospace; font-size: 11px">md · 10px</span></div>
+        <div style="display: flex; flex-direction: column; gap: 6px"><div style="height: 64px; background: #E3EFE2; border: 1.5px solid #2F6B3B; border-radius: 16px"></div><span style="font-family: 'JetBrains Mono', monospace; font-size: 11px">lg · 16px</span></div>
+        <div style="display: flex; flex-direction: column; gap: 6px"><div style="height: 64px; background: #E3EFE2; border: 1.5px solid #2F6B3B; border-radius: 999px"></div><span style="font-family: 'JetBrains Mono', monospace; font-size: 11px">full</span></div>
+      </div>
+    </div>
+    <div>
+      <h2 style="margin: 0 0 14px; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 24px; letter-spacing: -0.02em">Elevação</h2>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px">
+        <div style="height: 72px; background: #FFFFFF; border: 1px solid #E7E3D9; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 11px">flat · borda</div>
+        <div style="height: 72px; background: #FFFFFF; border-radius: 16px; box-shadow: 0 1px 2px rgba(28,27,25,0.06), 0 2px 8px rgba(28,27,25,0.06); display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 11px">shadow-sm</div>
+        <div style="height: 72px; background: #FFFFFF; border-radius: 16px; box-shadow: 0 4px 12px rgba(28,27,25,0.08), 0 16px 32px rgba(28,27,25,0.10); display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 11px">shadow-lg</div>
+      </div>
+    </div>
+    <div>
+      <h2 style="margin: 0 0 10px; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 24px; letter-spacing: -0.02em">Movimento e ícones</h2>
+      <p style="margin: 0; font-size: 15px; line-height: 1.55; color: #423E35">150ms para hover e foco, 200ms para entrar e sair, curva ease-out. Sem translate nem scale no hover de cards: só borda e sombra. Ícones Lucide, traço 1.75, tamanhos 16 / 20 / 24, sempre com rótulo ou aria-label.</p>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1060}}'>
+class Component extends DCLogic {
+renderVals() {
+const d = "font-family: 'Bricolage Grotesque', sans-serif; letter-spacing: -0.02em; ";
+return {
+scale: [
+{ token: 'display', spec: '48 / 52 · 800', sample: 'Bolo de fubá', style: d + 'font-weight: 800; font-size: 48px; line-height: 52px; letter-spacing: -0.03em' },
+{ token: 'h1', spec: '36 / 40 · 700', sample: 'Minhas receitas', style: d + 'font-weight: 700; font-size: 36px; line-height: 40px' },
+{ token: 'h2', spec: '24 / 32 · 700', sample: 'Modo de preparo', style: d + 'font-weight: 700; font-size: 24px; line-height: 32px' },
+{ token: 'h3', spec: '18 / 26 · 600', sample: 'Ingredientes da massa', style: "font-weight: 600; font-size: 18px; line-height: 26px" },
+{ token: 'body-lg', spec: '18 / 28 · 400', sample: 'Bata os ovos com o açúcar até virar um creme claro.', style: 'font-size: 18px; line-height: 28px' },
+{ token: 'body', spec: '16 / 24 · 400', sample: 'Unte a forma e polvilhe farinha de trigo.', style: 'font-size: 16px; line-height: 24px' },
+{ token: 'small', spec: '14 / 20 · 500', sample: '12 ingredientes · há 2 dias', style: 'font-size: 14px; line-height: 20px; font-weight: 500; color: #5B5649' },
+{ token: 'mono', spec: '14 / 20 · 500', sample: '2 xíc. · 180 °C · 40 min', style: "font-family: 'JetBrains Mono', monospace; font-size: 14px; line-height: 20px; font-weight: 500" }
+],
+space: [
+{ token: '1', px: '4', w: '4px' }, { token: '2', px: '8', w: '8px' }, { token: '3', px: '12', w: '12px' }, { token: '4', px: '16', w: '16px' },
+{ token: '6', px: '24', w: '24px' }, { token: '8', px: '32', w: '32px' }, { token: '12', px: '48', w: '48px' }, { token: '16', px: '64', w: '64px' }
+]
+};
+}
+}
+</script>
+</body>
+</html>

@@ -31,7 +31,7 @@ const goBack = () => {
     <div class="flex items-center mb-6">
       <button
         @click="goBack"
-        class="mr-4 p-2 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        class="mr-4 p-2 rounded-full hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         aria-label="Voltar"
       >
         <svg
@@ -53,7 +53,7 @@ const goBack = () => {
     </div>
 
     <div class="mb-6">
-      <label for="search" class="block text-sm font-medium text-gray-700 mb-1"
+      <label for="search" class="block text-sm font-semibold text-foreground mb-1.5"
         >Buscar perguntas</label
       >
       <input
@@ -61,12 +61,12 @@ const goBack = () => {
         v-model="searchQuery"
         type="text"
         placeholder="Digite sua dúvida..."
-        class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        class="w-full h-11 px-3.5 border border-input rounded-md bg-card text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       />
     </div>
 
     <div class="space-y-4">
-      <div v-for="(item, index) in filteredContent" :key="index" class="border-b border-gray-200">
+      <div v-for="(item, index) in filteredContent" :key="index" class="border-b border-border">
         <button
           @click="toggleItem(index)"
           class="w-full text-left p-4 flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -91,7 +91,11 @@ const goBack = () => {
           </svg>
         </button>
 
-        <div v-show="activeIndex === index" :id="`faq-${index}`" class="p-4 pt-0 text-gray-700">
+        <div
+          v-show="activeIndex === index"
+          :id="`faq-${index}`"
+          class="p-4 pt-0 text-foreground/85 leading-relaxed"
+        >
           <p v-html="item.answer"></p>
         </div>
       </div>

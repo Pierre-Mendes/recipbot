@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-vue-next'
 
 import RecipeForm from '@/components/RecipeForm.vue'
 import PdfImportReview from '@/components/PdfImportReview.vue'
+import BitMascot from '@/components/brand/BitMascot.vue'
 import { getRecipe } from '@/api/recipes'
 import type {
   FromUrlInput,
@@ -36,6 +37,8 @@ const draftPosition = computed(() => draftTotal.value - draftQueue.value.length 
 const pdfImport = ref<{ file: File; analysis: PdfImportAnalysis } | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
+/** What Bit is "cooking" while an import runs; null when idle. */
+const importStatus = ref<string | null>(null)
 // Kept separate from `error` (used for submit failures): a failed initial load
 // must hide the form and skeleton, while a submit failure must keep the form
 // visible so the user can retry without losing their edits.
@@ -89,6 +92,7 @@ async function handleSubmit(input: RecipeFormInput) {
 async function handleSubmitFromUrl(input: FromUrlInput) {
   loading.value = true
   error.value = null
+  importStatus.value = 'Lendo a receita do link…'
   try {
     // Import no longer saves: it extracts a draft the user reviews and edits
     // before the recipe is actually created (through handleSubmit).
@@ -99,14 +103,17 @@ async function handleSubmitFromUrl(input: FromUrlInput) {
     toast.error(error.value)
   } finally {
     loading.value = false
+    importStatus.value = null
   }
 }
 
 async function handleSubmitFile(file: File) {
+  const isPdf = file.name.toLowerCase().endsWith('.pdf')
   loading.value = true
   error.value = null
+  importStatus.value = isPdf ? 'Folheando o PDF…' : 'Lendo o arquivo…'
   try {
-    if (file.name.toLowerCase().endsWith('.pdf')) {
+    if (isPdf) {
       // A PDF may hold a whole e-book: first let the user confirm which
       // pages are which recipe.
       pdfImport.value = { file, analysis: await store.analyzePdf(file) }
@@ -120,6 +127,7 @@ async function handleSubmitFile(file: File) {
     toast.error(error.value)
   } finally {
     loading.value = false
+    importStatus.value = null
   }
 }
 
@@ -127,6 +135,7 @@ async function handleConfirmPdf(groups: PdfRecipeGroup[]) {
   if (!pdfImport.value) return
   loading.value = true
   error.value = null
+  importStatus.value = 'Separando as receitas do PDF…'
   try {
     const drafts = await store.confirmPdf(pdfImport.value.analysis.id, groups)
     pdfImport.value = null
@@ -141,6 +150,7 @@ async function handleConfirmPdf(groups: PdfRecipeGroup[]) {
     toast.error(error.value)
   } finally {
     loading.value = false
+    importStatus.value = null
   }
 }
 
@@ -245,10 +255,24 @@ function goBack() {
     </div>
 
     <div
-      v-if="recipeId && !recipe && !loadError"
-      class="py-12 flex justify-center text-muted-foreground animate-pulse"
+      v-if="importStatus"
+      role="status"
+      class="mb-6 flex items-center gap-4 rounded-lg border border-border bg-tone-saffron p-4 text-tone-saffron-foreground animate-in fade-in slide-in-from-top-2 duration-200"
     >
-      Carregando detalhes da receita...
+      <BitMascot pose="cooking" :size="72" animated class="shrink-0" />
+      <div>
+        <p class="font-display text-lg font-bold">Bit está cozinhando</p>
+        <p class="text-sm">{{ importStatus }}</p>
+      </div>
+    </div>
+
+    <div
+      v-if="recipeId && !recipe && !loadError"
+      role="status"
+      class="py-12 flex flex-col items-center gap-3 text-muted-foreground"
+    >
+      <BitMascot pose="cooking" :size="96" animated />
+      Carregando detalhes da receita…
     </div>
 
     <PdfImportReview

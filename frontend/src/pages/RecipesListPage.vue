@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { BookX, SearchX, Tag as TagIcon, LayoutGrid, List } from 'lucide-vue-next'
+import { LayoutGrid, List } from 'lucide-vue-next'
 
 import RecipeCard from '@/components/RecipeCard.vue'
+import BitMascot from '@/components/brand/BitMascot.vue'
 import SearchBar from '@/components/SearchBar.vue'
 import Pagination from '@/components/ui/Pagination.vue'
 import Button from '@/components/ui/Button.vue'
@@ -182,13 +183,11 @@ function goToPage(page: number) {
     <!-- Empty states (contextual) -->
     <div
       v-else-if="store.recipes.length === 0"
-      class="flex flex-col items-center justify-center py-16 text-center border-2 border-dashed border-border rounded-xl bg-muted/30"
+      class="flex flex-col items-center justify-center py-14 px-4 text-center border border-border rounded-lg bg-card"
     >
       <!-- No results for a text search -->
       <template v-if="activeQuery">
-        <div class="bg-muted p-4 rounded-full mb-4">
-          <SearchX class="h-8 w-8 text-muted-foreground" />
-        </div>
+        <BitMascot pose="thinking" :size="112" class="mb-4" />
         <h3 class="text-lg font-semibold text-foreground mb-1">Nenhum resultado</h3>
         <p class="text-sm text-muted-foreground max-w-sm">
           Nenhuma receita corresponde a “{{ activeQuery }}”. Tente outros termos.
@@ -196,9 +195,7 @@ function goToPage(page: number) {
       </template>
       <!-- No results for a tag filter -->
       <template v-else-if="activeTags.length">
-        <div class="bg-muted p-4 rounded-full mb-4">
-          <TagIcon class="h-8 w-8 text-muted-foreground" />
-        </div>
+        <BitMascot pose="thinking" :size="112" class="mb-4" />
         <h3 class="text-lg font-semibold text-foreground mb-1">Nenhuma receita com essa tag</h3>
         <p class="text-sm text-muted-foreground max-w-sm">
           Não há receitas marcadas com {{ activeTags.map((t) => `“${t}”`).join(', ') }}.
@@ -206,9 +203,7 @@ function goToPage(page: number) {
       </template>
       <!-- No recipes at all -->
       <template v-else>
-        <div class="bg-primary/10 p-4 rounded-full mb-4">
-          <BookX class="h-8 w-8 text-primary" />
-        </div>
+        <BitMascot pose="hello" :size="128" class="mb-4" />
         <h3 class="text-lg font-semibold text-foreground mb-1">Nenhuma receita ainda</h3>
         <p class="text-sm text-muted-foreground max-w-sm mb-6">
           Comece adicionando sua primeira receita — manualmente ou importando de uma URL.

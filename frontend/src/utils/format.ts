@@ -43,14 +43,23 @@ function hashString(text: string): number {
   return Math.abs(hash)
 }
 
+/** Ingredient tones of the design system (see docs/DESIGN-SYSTEM.md). */
+export const RECIPE_TONES = ['basil', 'paprika', 'saffron', 'flour'] as const
+
+export type RecipeTone = (typeof RECIPE_TONES)[number]
+
 /**
- * A stable, title-derived CSS gradient so each recipe card gets its own
- * recognizable color without needing an uploaded image. Same title always
- * yields the same gradient; tuned to stay legible under a white icon overlay
- * in both light and dark themes.
+ * A stable, title-derived tone so each recipe tile gets its own recognizable
+ * color without needing an uploaded image. Same title always yields the same
+ * tone; each tone maps to a `bg-tone-*` / `text-tone-*-foreground` token pair
+ * that passes WCAG AA in both light and dark themes.
  */
-export function titleGradient(text: string): string {
-  const hue = hashString(text) % 360
-  const secondHue = (hue + 35) % 360
-  return `linear-gradient(135deg, hsl(${hue} 62% 52%), hsl(${secondHue} 68% 40%))`
+export function recipeTone(text: string): RecipeTone {
+  return RECIPE_TONES[hashString(text) % RECIPE_TONES.length]
+}
+
+/** First visible letter of a title, upper-cased, for the recipe tile monogram. */
+export function titleInitial(text: string): string {
+  const match = text.trim().match(/\p{L}|\p{N}/u)
+  return match ? match[0].toLocaleUpperCase('pt-BR') : '?'
 }

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { ChefHat, LogOut, Plus, BookOpen, Sun, Moon, UserCircle, HelpCircle } from 'lucide-vue-next'
+import { LogOut, Plus, BookOpen, Sun, Moon, UserCircle, HelpCircle } from 'lucide-vue-next'
 
 import { useAuthStore } from '@/stores/auth'
 import { useDarkMode } from '@/composables/useDarkMode'
 import Button from '@/components/ui/Button.vue'
+import BrandMark from '@/components/brand/BrandMark.vue'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -17,15 +18,13 @@ async function handleLogout() {
 </script>
 
 <template>
-  <header class="sticky top-0 z-50 glass">
-    <div class="mx-auto flex max-w-4xl items-center justify-between px-4 py-4">
-      <RouterLink to="/" class="flex items-center gap-2 transition-transform hover:scale-105">
-        <div
-          class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm"
+  <header class="sticky top-0 z-50 border-b border-border bg-background">
+    <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
+      <RouterLink to="/" class="flex items-center gap-2.5">
+        <BrandMark :size="36" />
+        <span class="font-display text-xl font-extrabold tracking-tight text-foreground"
+          >RecipBot</span
         >
-          <ChefHat class="h-5 w-5" />
-        </div>
-        <span class="text-xl font-bold tracking-tight text-foreground">RecipBot</span>
       </RouterLink>
 
       <nav class="flex items-center gap-2 sm:gap-4">
@@ -44,11 +43,7 @@ async function handleLogout() {
             </Button>
           </RouterLink>
           <RouterLink to="/recipes/new">
-            <Button
-              variant="default"
-              size="sm"
-              class="shadow-md transition-transform hover:-translate-y-0.5"
-            >
+            <Button variant="default" size="sm">
               <Plus class="mr-2 h-4 w-4" />
               Nova Receita
             </Button>

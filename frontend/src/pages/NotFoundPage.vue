@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { ChefHat } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
+import BitMascot from '@/components/brand/BitMascot.vue'
 
 const router = useRouter()
 
@@ -14,17 +14,8 @@ function goHome() {
   <div
     class="flex flex-col items-center justify-center py-20 text-center animate-in fade-in zoom-in-95 duration-500"
   >
-    <div class="relative mb-8">
-      <div
-        class="flex h-24 w-24 items-center justify-center rounded-3xl bg-muted/50 border-2 border-dashed border-border"
-      >
-        <ChefHat class="h-12 w-12 text-muted-foreground/40" />
-      </div>
-      <div
-        class="absolute -top-2 -right-2 flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10 text-destructive text-lg font-bold border border-destructive/20"
-      >
-        ?
-      </div>
+    <div class="mb-6">
+      <BitMascot pose="oops" :size="140" />
     </div>
 
     <h1 class="text-4xl font-bold tracking-tight text-foreground mb-2">404</h1>
@@ -33,6 +24,6 @@ function goHome() {
       A página que você está procurando não existe ou foi movida para outro endereço.
     </p>
 
-    <Button class="shadow-md" @click="goHome"> Voltar para minhas receitas </Button>
+    <Button @click="goHome"> Voltar para minhas receitas </Button>
   </div>
 </template>

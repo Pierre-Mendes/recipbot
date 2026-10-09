@@ -1,0 +1,112 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Brand.dc.html": {
+      "h": 1060,
+      "title": "Marca · Logo e mascote",
+      "w": 1280,
+      "x": 4080,
+      "y": 0
+    },
+    "Colors.dc.html": {
+      "h": 1060,
+      "title": "Cores",
+      "w": 1280,
+      "x": 1360,
+      "y": 0
+    },
+    "Components.dc.html": {
+      "h": 1240,
+      "title": "Componentes",
+      "w": 1280,
+      "x": 0,
+      "y": 1403
+    },
+    "Main.dc.html": {
+      "h": 900,
+      "title": "Visão geral",
+      "w": 1280,
+      "x": 0,
+      "y": 0
+    },
+    "Mobile.dc.html": {
+      "h": 844,
+      "title": "Tela · Mobile",
+      "w": 390,
+      "x": 4400,
+      "y": 1403
+    },
+    "RecipeDetail.dc.html": {
+      "expand": "fill",
+      "h": 1240,
+      "is_interactive": true,
+      "title": "Tela · Detalhe da receita",
+      "w": 1440,
+      "x": 2880,
+      "y": 1403
+    },
+    "RecipesList.dc.html": {
+      "expand": "fill",
+      "h": 1240,
+      "is_interactive": true,
+      "title": "Tela · Minhas receitas",
+      "w": 1440,
+      "x": 1360,
+      "y": 1403
+    },
+    "Typography.dc.html": {
+      "h": 1060,
+      "title": "Tipografia, espaço e forma",
+      "w": 1280,
+      "x": 2720,
+      "y": 0
+    },
+    "BitStory.dc.html": {
+      "x": 5440,
+      "y": 0,
+      "w": 1280,
+      "h": 1060,
+      "title": "Marca · A história do Bit"
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-10-09T12:00:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "aplicacao": {
+      "kind": "title1",
+      "maxW": 4790,
+      "text": "Componentes e telas",
+      "w": 240,
+      "x": 0,
+      "y": 1143
+    },
+    "fundamentos": {
+      "kind": "title1",
+      "maxW": 6720,
+      "text": "Fundamentos",
+      "w": 240,
+      "x": 0,
+      "y": -260
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Brand.dc.html",
+    "BitStory.dc.html",
+    "Colors.dc.html",
+    "Typography.dc.html",
+    "Components.dc.html",
+    "RecipesList.dc.html",
+    "RecipeDetail.dc.html",
+    "Mobile.dc.html"
+  ],
+  "pages": [],
+  "title": "RecipBot Design System"
+}
