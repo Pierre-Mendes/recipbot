@@ -26,7 +26,18 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary'],
-      exclude: ['src/main.ts', 'src/test/**', '**/*.d.ts', 'src/vite-env.d.ts', 'e2e/**'],
+      exclude: [
+        'src/main.ts',
+        'src/test/**',
+        '**/*.d.ts',
+        'src/vite-env.d.ts',
+        'e2e/**',
+        // Canvas/pdf.js rendering glue: pdf.js rasterizes to a real <canvas>
+        // and loads a web worker, neither of which runs under jsdom. These are
+        // exercised by the Playwright e2e import flow, not by unit tests.
+        'src/components/PdfPageCanvas.vue',
+        'src/composables/usePdfDocument.ts',
+      ],
       thresholds: {
         statements: 80,
         branches: 80,
