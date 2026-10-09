@@ -7,19 +7,23 @@ return [
     | Recipe Scraper
     |--------------------------------------------------------------------------
     |
-    | Domains the recipe scraper is allowed to fetch from, and the request
-    | limits enforced while doing so. Keeping these in config/env (rather
-    | than hardcoded in SsrfGuard/RecipeScraperService) lets the whitelist
-    | differ per environment without a code change.
+    | Domains the recipe scraper is allowed to fetch from, plus the request
+    | limits enforced while doing so. The allow-list is a fixed security
+    | policy (kept in code — see below); the operational tunables (timeout,
+    | size, user agent) stay env-driven since they can vary per environment.
     |
     */
 
-    // receitas.globo.com now redirects its recipes to gshow.globo.com, so
-    // both are needed for Globo links to import. CyberCook went offline.
-    'allowed_hosts' => array_values(array_filter(array_map(
-        'trim',
-        explode(',', env('SCRAPER_WHITELIST_DOMAINS', 'tudogostoso.com.br,receitas.globo.com,gshow.globo.com'))
-    ))),
+    // SSRF allow-list: the recipe portals the scraper may fetch from. This is a
+    // security control, not per-environment configuration, so it lives in code
+    // (versioned and reviewed in pull requests) rather than an env var an
+    // operator could silently widen on a server. receitas.globo.com redirects
+    // its recipes to gshow.globo.com, so both are needed; CyberCook went offline.
+    'allowed_hosts' => [
+        'tudogostoso.com.br',
+        'receitas.globo.com',
+        'gshow.globo.com',
+    ],
 
     'timeout' => (int) env('SCRAPER_TIMEOUT', 10),
 
