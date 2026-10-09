@@ -2,7 +2,9 @@
 
 Identidade visual do RecipBot: cores de ingrediente, tipografia com personalidade e um mascote, o **Bit**, robozinho chef.
 
-- **Canvas de design (fonte visual):** https://claude.ai/artifact/RNQDiPhKoaDedFG2uRD7RM — marca, cores, tipografia, componentes e telas (desktop, mobile e modo escuro).
+- **Canvas de design (fonte visual):** https://claude.ai/artifact/RNQDiPhKoaDedFG2uRD7RM — marca, história do Bit, cores, tipografia, componentes e telas (desktop, mobile e modo escuro).
+- **Cópia offline do canvas:** [`docs/design/RecipBot_Design_System.html`](design/RecipBot_Design_System.html) — abra no navegador (arquivo autocontido, precisa de JavaScript).
+- **Fontes do canvas:** `docs/design/canvas/*.dc.html` (uma prancheta por arquivo, versionável) + `canvas.json` (layout).
 - **Fonte de verdade no código:** `frontend/src/style.css` (tokens) + `frontend/src/components/ui/*` e `frontend/src/components/brand/*`.
 
 ---
@@ -42,10 +44,34 @@ Regras:
 Robozinho chef com visor escuro, olhos de manjericão, chapéu branco, avental verde e lenço de páprica.
 Componente: `components/brand/BitMascot.vue`.
 
+#### A história do Bit
+
+> Bit era o menor robô da linha de montagem: pequeno demais para lavar louça, baixinho demais para alcançar o fogão. Um dia foi parar numa cozinha de casa, no meio de cadernos de receita manchados de molho, guardanapos com anotações da avó e prints esquecidos no celular.
+>
+> Ali ele entendeu uma coisa: as melhores receitas do mundo não se perdem de uma vez. Elas somem **aos pouquinhos**, uma folha solta aqui, um link quebrado ali.
+>
+> Bit pegou um chapéu de chef emprestado, amarrou um lenço cor de páprica no pescoço e vestiu o avental verde. Desde então tem uma missão só: guardar cada receita, **bit por bit**, para que ninguém precise perguntar de novo "como era mesmo aquele bolo?".
+
+#### Por que "Bit"
+
+| Motivo | O que significa |
+|--------|-----------------|
+| **A menor unidade de informação** | Um *bit* é o pedacinho mínimo de dado. O Bit cuida das receitas como dados preciosos: organiza, guarda e encontra. |
+| **"A bit" = um pouquinho** | Em inglês, *a bit* é "um pouquinho", como uma pitada de sal. Receita se faz assim, aos poucos, e o Bit também é pequeno. |
+| **Rima com Bot** | Recip**Bot** → **Bit**. Uma letra de diferença: o mascote é o "pedacinho" humano da marca. |
+| **Fácil de falar** | Uma sílaba, igual em português e em inglês, soa como o *bip* de um robô e funciona em qualquer idade. |
+
+#### Personalidade e voz
+
+- **Curioso e prestativo:** gosta de descobrir receitas novas e ajudar a achar as antigas.
+- **Meio atrapalhado:** quando algo dá errado, sua uma gotinha (pose `oops`), mas nunca culpa quem está usando.
+- **Nunca julga a receita:** miojo incrementado e bacalhau de Natal têm o mesmo carinho.
+- **Fala como gente da cozinha:** frases curtas, "a gente", sem jargão técnico. Ex.: "Não achei nada com 'lasanha'. Tenta outro ingrediente?" em vez de "0 resultados para a query".
+
 | Pose (`pose`) | Quando usar | Onde já está |
 |---------------|-------------|--------------|
 | `hello` | Boas-vindas, login, cadastro, primeira receita | `LoginPage`, lista vazia |
-| `cooking` | Carregando, importando link/PDF | — (disponível) |
+| `cooking` | Carregando, importando link/PDF (use `animated` para mexer a colher) | `RecipeFormPage` (importação e carregamento) |
 | `thinking` | Busca sem resultado, filtro por tag vazio | `RecipesListPage` |
 | `oops` | Erros, 404, receita não encontrada | `NotFoundPage`, `RecipeDetailPage` |
 
@@ -154,6 +180,8 @@ Títulos: `letter-spacing` −0.02em (h1: −0.03em).
 ## 6. Movimento e ícones
 
 - 150ms para hover/foco, 200ms para entrada/saída, `ease-out`.
+- Animações de entrada via plugin **`tw-animate-css`** (`animate-in fade-in`, `zoom-in-95`, `slide-in-from-bottom-4`…).
+- `prefers-reduced-motion: reduce` desliga movimento globalmente (regra no fim de `style.css`), inclusive a colher do Bit.
 - Cards: no hover mudam **só borda e sombra**, sem `translate` ou `scale`.
 - Ícones: **Lucide** (`lucide-vue-next`), tamanhos 16 / 20 / 24. Botão só com ícone exige `aria-label` ou `title`.
 
@@ -171,6 +199,8 @@ Títulos: `letter-spacing` −0.02em (h1: −0.03em).
 | Tag | (inline) | `rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold`. Tag ativa/filtro: `bg-primary text-primary-foreground`. |
 | Toast | `ui/ToastContainer.vue` | `shadow-lg`, ação em `primary`. |
 | ConfirmDialog | `ui/ConfirmDialog.vue` | `rounded-xl`, ação destrutiva à direita. |
+| Checklist de ingredientes | `RecipeDetailPage.vue` + `composables/useIngredientChecklist.ts` | Checkbox nativo `accent-primary`, linha de 44px, riscado ao marcar, progresso em mono ("3 de 9 separados"), "Desmarcar tudo". Salvo por receita no `localStorage`. |
+| Passos do preparo | `RecipeDetailPage.vue` | Número em círculo `secondary` 44px + texto `body-lg`. |
 | BrandMark / BitMascot | `brand/*.vue` | Ver §2. |
 
 ### Faça / Não faça
@@ -212,11 +242,11 @@ Classe `.dark` no `<html>`, controlada por `composables/useDarkMode.ts` (prefer�
 
 **Pendências conhecidas**
 
-1. **Classes `animate-in …` sem efeito.** ~20 usos (`fade-in`, `zoom-in-95`, `slide-in-from-bottom-4`) dependem do plugin `tw-animate-css`, que não está instalado. Decidir: instalar o plugin ou remover as classes.
+1. ~~Classes `animate-in …` sem efeito~~ → resolvido: plugin `tw-animate-css` instalado.
 2. **Botões `size="sm"` (36px)** em 18 lugares ficam abaixo do alvo de 44px. Revisar os usados em mobile.
 3. **`text-xs` (12px)** em metadados de `RecipeForm`, `ListEditor` e `PdfImportReview`: subir para `text-sm` onde houver leitura.
-4. **Detalhe da receita:** o design prevê checklist de ingredientes ("3 de 9 separados") e passos numerados em círculo. Ainda não implementado.
-5. **Pose `cooking` do Bit** ainda sem uso: aplicar no carregamento da importação por link/PDF.
+4. ~~Checklist de ingredientes e passos numerados~~ → implementado.
+5. ~~Pose `cooking` sem uso~~ → usada na importação e no carregamento da edição.
 6. **Fontes via Google Fonts:** considerar self-host (`@fontsource/*`) para privacidade e uso offline.
 
 ---

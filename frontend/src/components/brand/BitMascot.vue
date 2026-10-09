@@ -24,11 +24,15 @@ interface PoseShape {
   sweat: boolean
 }
 
-const props = withDefaults(defineProps<{ pose?: BitPose; size?: number; decorative?: boolean }>(), {
-  pose: 'hello',
-  size: 160,
-  decorative: true,
-})
+const props = withDefaults(
+  defineProps<{ pose?: BitPose; size?: number; decorative?: boolean; animated?: boolean }>(),
+  {
+    pose: 'hello',
+    size: 160,
+    decorative: true,
+    animated: false,
+  },
+)
 
 const RESTING_LEFT_ARM = 'M64 172 Q48 186 50 204'
 
@@ -113,7 +117,7 @@ const shape = computed(() => POSES[props.pose])
     />
     <path :d="shape.rightArm" fill="none" stroke="#1C1B19" stroke-width="14" />
     <path :d="shape.rightArm" fill="none" stroke="#A9A291" stroke-width="8" />
-    <g v-if="shape.spoon">
+    <g v-if="shape.spoon" :class="{ 'bit-stir': animated }">
       <line x1="160" y1="196" x2="180" y2="146" stroke="#1C1B19" stroke-width="9" />
       <line x1="160" y1="196" x2="180" y2="146" stroke="#C9931E" stroke-width="4" />
       <ellipse
@@ -253,3 +257,27 @@ const shape = computed(() => POSES[props.pose])
     />
   </svg>
 </template>
+
+<style scoped>
+/* Cooking pose: the spoon stirs around Bit's hand. Off for reduced motion. */
+.bit-stir {
+  transform-box: view-box;
+  transform-origin: 160px 196px;
+  animation: bit-stir 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes bit-stir {
+  from {
+    transform: rotate(-12deg);
+  }
+  to {
+    transform: rotate(10deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bit-stir {
+    animation: none;
+  }
+}
+</style>

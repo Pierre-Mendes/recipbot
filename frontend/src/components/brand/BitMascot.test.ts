@@ -27,6 +27,15 @@ describe('BitMascot', () => {
     const hello = render(BitMascot, { props: { pose: 'hello' } })
     expect(hello.container.querySelectorAll('ellipse')).toHaveLength(1)
   })
+
+  it('stirs the spoon only when animated', () => {
+    const still = render(BitMascot, { props: { pose: 'cooking' } })
+    expect(still.container.querySelector('.bit-stir')).toBeNull()
+    still.unmount()
+
+    const stirring = render(BitMascot, { props: { pose: 'cooking', animated: true } })
+    expect(stirring.container.querySelector('.bit-stir')).not.toBeNull()
+  })
 })
 
 describe('BrandMark', () => {
