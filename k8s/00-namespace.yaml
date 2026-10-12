@@ -1,0 +1,9 @@
+# Ambiente de STAGING do recipbot no K3s — paralelo à produção (Compose).
+# NADA aqui toca o Compose: namespace, dados e rede próprios.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: recipbot-stg
+  labels:
+    app.kubernetes.io/part-of: recipbot
+    ambiente: staging

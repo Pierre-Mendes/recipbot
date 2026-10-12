@@ -1,0 +1,58 @@
+# Backup diário do Postgres (pg_dump) para /mnt/storage/backups/recipbot-k3s no
+# node, via hostPath. Retenção 14 dias. Falha alto se o dump sair pequeno demais
+# (guarda contra backups vazios). A pasta precisa existir no node antes de aplicar:
+#   sudo mkdir -p /mnt/storage/backups/recipbot-k3s
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: recipbot-pg-backup
+  namespace: recipbot-stg
+spec:
+  schedule: "0 3 * * *"
+  timeZone: "America/Sao_Paulo"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: pg-backup
+              image: postgres:16-alpine
+              env:
+                - name: PGHOST
+                  value: recipbot-postgres
+                - name: PGUSER
+                  value: postgres
+                - name: PGDATABASE
+                  value: recipbot
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: recipbot-secrets
+                      key: DB_PASSWORD
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -euo pipefail
+                  ts=$(date +%Y%m%d-%H%M%S)
+                  out="/backups/recipbot-${ts}.sql.gz"
+                  pg_dump | gzip -9 > "${out}.tmp"
+                  size=$(wc -c < "${out}.tmp")
+                  if [ "$size" -lt 1000 ]; then
+                    echo "ERRO: dump suspeito (${size} bytes) — nao salvando"; rm -f "${out}.tmp"; exit 1
+                  fi
+                  mv "${out}.tmp" "$out"
+                  find /backups -name 'recipbot-*.sql.gz' -mtime +14 -delete
+                  echo "OK: $out (${size} bytes)"
+              volumeMounts:
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: backups
+              hostPath:
+                path: /mnt/storage/backups/recipbot-k3s
+                type: Directory
