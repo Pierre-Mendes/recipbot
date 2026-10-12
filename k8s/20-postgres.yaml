@@ -18,6 +18,8 @@ spec:
         - name: postgres
           image: ghcr.io/pierre-mendes/recipbot-postgres:latest
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
           ports:
             - { containerPort: 5432, name: postgres }
           env:
