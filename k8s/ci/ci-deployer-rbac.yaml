@@ -32,8 +32,12 @@ rules:
     resources: [pods]
     verbs: [get, list, watch]
   - apiGroups: [batch]
-    resources: [jobs, cronjobs]
+    resources: [cronjobs]
     verbs: [get, list, create, patch, update]
+  # delete: o CD recria o Job recipbot-minio-init a cada deploy (spec imutável).
+  - apiGroups: [batch]
+    resources: [jobs]
+    verbs: [get, list, create, patch, update, delete]
   - apiGroups: [networking.k8s.io]
     resources: [ingresses]
     verbs: [get, list, create, patch, update]

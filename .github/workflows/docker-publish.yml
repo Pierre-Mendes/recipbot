@@ -120,6 +120,9 @@ jobs:
           k8s/render.sh "$SHA" "$RUNNER_TEMP/k8s"
           # diff só pra log (sai 1 quando há diferença).
           kubectl diff -f "$RUNNER_TEMP/k8s" || true
+          # Job tem spec imutável: recria o init do bucket (idempotente) para
+          # que mudar o 35-minio.yaml não quebre o apply.
+          kubectl -n recipbot-stg delete job recipbot-minio-init --ignore-not-found
           kubectl apply -f "$RUNNER_TEMP/k8s"
 
       - name: Aguardar rollout
