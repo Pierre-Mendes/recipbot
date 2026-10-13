@@ -11,6 +11,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Validation\Rule;
 
+/**
+ * @property RecipeCover|null $cover
+ */
 class Recipe extends Model
 {
     /** @use HasFactory<RecipeFactory> */
