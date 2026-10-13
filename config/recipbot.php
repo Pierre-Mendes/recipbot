@@ -46,4 +46,15 @@ return [
         'max_pages' => (int) env('PDF_IMPORT_MAX_PAGES', 150),
         'ttl_minutes' => (int) env('PDF_IMPORT_TTL_MINUTES', 120),
     ],
+
+    /*
+    | Recipe photos. "disk" is a config/filesystems.php disk: "s3" points at
+    | MinIO in docker-compose (any S3-compatible bucket in production), and
+    | the local "public" disk is the fallback outside docker. The bucket must
+    | allow anonymous reads of its objects - the frontend loads them in <img>.
+    */
+    'images' => [
+        'disk' => env('RECIPE_IMAGES_DISK', 'public'),
+        'max_file_kb' => (int) env('RECIPE_IMAGE_MAX_FILE_KB', 5120),
+    ],
 ];

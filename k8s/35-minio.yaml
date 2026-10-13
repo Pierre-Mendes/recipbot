@@ -1,0 +1,106 @@
+# MinIO (S3-compatível) para as fotos das receitas — StatefulSet com PVC
+# (local-path), como o Postgres. Credenciais vêm do Secret recipbot-secrets
+# (AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY, as mesmas que a app usa).
+# O navegador NÃO fala com este Service direto: as fotos saem pelo Ingress
+# (/recipbot/recipes → recipbot-minio:9000), same-origin com o SPA.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: recipbot-minio
+  namespace: recipbot-stg
+spec:
+  serviceName: recipbot-minio
+  replicas: 1
+  selector:
+    matchLabels: { app: recipbot-minio }
+  template:
+    metadata:
+      labels: { app: recipbot-minio }
+    spec:
+      containers:
+        - name: minio
+          image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+          args: ["server", "/data", "--console-address", ":9001"]
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef: { name: recipbot-secrets, key: AWS_ACCESS_KEY_ID }
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: recipbot-secrets, key: AWS_SECRET_ACCESS_KEY }
+          ports:
+            - { containerPort: 9000, name: s3 }
+            - { containerPort: 9001, name: console }
+          volumeMounts:
+            - { name: data, mountPath: /data }
+          readinessProbe:
+            httpGet: { path: /minio/health/ready, port: 9000 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /minio/health/live, port: 9000 }
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests: { cpu: "50m", memory: "128Mi" }
+            limits: { memory: "512Mi" }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-path
+        resources:
+          requests: { storage: 10Gi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: recipbot-minio
+  namespace: recipbot-stg
+spec:
+  selector: { app: recipbot-minio }
+  ports:
+    - { port: 9000, targetPort: 9000, name: s3 }
+    - { port: 9001, targetPort: 9001, name: console }
+---
+# Cria o bucket e libera só LEITURA anônima (download) — o SPA carrega as fotos
+# direto em <img>; as chaves dos objetos são UUIDs aleatórios. Upload continua
+# exigindo as credenciais (só a app tem). Idempotente; o TTL apaga o Job depois
+# de concluído, então todo `kubectl apply -f k8s/` roda de novo sem conflito.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: recipbot-minio-init
+  namespace: recipbot-stg
+spec:
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 10
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mc
+          image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+          securityContext:
+            allowPrivilegeEscalation: false
+          envFrom:
+            - configMapRef: { name: recipbot-config }
+          env:
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef: { name: recipbot-secrets, key: AWS_ACCESS_KEY_ID }
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef: { name: recipbot-secrets, key: AWS_SECRET_ACCESS_KEY }
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              until mc alias set stg "$AWS_ENDPOINT" "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY"; do
+                echo "aguardando minio"; sleep 3
+              done
+              mc mb --ignore-existing "stg/$AWS_BUCKET"
+              mc anonymous set download "stg/$AWS_BUCKET"

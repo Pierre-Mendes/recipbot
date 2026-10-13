@@ -81,4 +81,25 @@ describe('RecipeCard', () => {
     expect(screen.getByText('+2')).toBeInTheDocument()
     expect(screen.getByLabelText('Importada de uma URL')).toBeInTheDocument()
   })
+
+  it('shows the uploaded photo, else the chosen cover, else the monogram', () => {
+    const { container, unmount } = renderWithRouter({
+      ...recipe,
+      image_url: 'http://localhost:9000/recipbot/recipes/1/a.jpg',
+      cover: 'cake',
+    })
+    expect(container.querySelector('img')).toHaveAttribute(
+      'src',
+      'http://localhost:9000/recipbot/recipes/1/a.jpg',
+    )
+    unmount()
+
+    const withCover = renderWithRouter({ ...recipe, cover: 'cake' })
+    expect(withCover.container.querySelector('img')).toHaveAttribute('src', '/covers/cake.svg')
+    withCover.unmount()
+
+    const plain = renderWithRouter(recipe)
+    expect(plain.container.querySelector('img')).toBeNull()
+    expect(plain.getByText('B')).toBeInTheDocument()
+  })
 })

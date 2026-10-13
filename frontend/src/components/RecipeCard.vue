@@ -3,7 +3,8 @@ import { computed } from 'vue'
 import { Utensils, Clock, Link as LinkIcon } from 'lucide-vue-next'
 
 import type { Recipe } from '@/types'
-import { recipeTone, relativeTime, titleInitial, type RecipeTone } from '@/utils/format'
+import { relativeTime } from '@/utils/format'
+import RecipeCoverArt from './RecipeCoverArt.vue'
 import Card from './ui/Card.vue'
 import CardContent from './ui/CardContent.vue'
 import CardHeader from './ui/CardHeader.vue'
@@ -16,18 +17,6 @@ const props = withDefaults(
   }>(),
   { layout: 'grid' },
 )
-
-/** Static class names per tone so Tailwind can see them at build time. */
-const TONE_CLASSES: Record<RecipeTone, string> = {
-  basil: 'bg-tone-basil text-tone-basil-foreground',
-  paprika: 'bg-tone-paprika text-tone-paprika-foreground',
-  saffron: 'bg-tone-saffron text-tone-saffron-foreground',
-  flour: 'bg-tone-flour text-tone-flour-foreground',
-}
-
-const toneClass = computed(() => TONE_CLASSES[recipeTone(props.recipe.title)])
-
-const initial = computed(() => titleInitial(props.recipe.title))
 
 const ingredientLabel = computed(() => {
   const n = props.recipe.ingredients?.length ?? 0
@@ -49,14 +38,14 @@ const createdLabel = computed(() => relativeTime(props.recipe.created_at))
       v-if="layout === 'list'"
       class="flex flex-row items-center gap-3 overflow-hidden p-2 transition-[border-color,box-shadow] duration-150 group-hover:border-primary group-hover:shadow-sm"
     >
-      <div
-        :class="[
-          'flex h-18 w-18 shrink-0 items-center justify-center rounded-md font-display text-3xl font-extrabold',
-          toneClass,
-        ]"
-        aria-hidden="true"
-      >
-        {{ initial }}
+      <div class="h-18 w-18 shrink-0 overflow-hidden rounded-md">
+        <RecipeCoverArt
+          :title="recipe.title"
+          :image-url="recipe.image_url"
+          :cover="recipe.cover"
+          initial-class="text-3xl"
+          compact
+        />
       </div>
       <CardContent class="min-w-0 flex-1 p-0 pr-2">
         <div class="flex items-start justify-between gap-2">
@@ -94,18 +83,16 @@ const createdLabel = computed(() => relativeTime(props.recipe.created_at))
       </CardContent>
     </Card>
 
-    <!-- Grid layout (default): vertical card with a solid tone tile -->
+    <!-- Grid layout (default): vertical card with the photo / cover on top -->
     <Card
       v-else
       class="flex h-full flex-col overflow-hidden transition-[border-color,box-shadow] duration-150 group-hover:border-primary group-hover:shadow-md"
     >
-      <div :class="['relative flex h-28 items-end justify-between px-4 pb-3.5', toneClass]">
-        <span class="font-display text-6xl leading-[0.8] font-extrabold" aria-hidden="true">
-          {{ initial }}
-        </span>
+      <div class="relative aspect-[16/9] w-full overflow-hidden">
+        <RecipeCoverArt :title="recipe.title" :image-url="recipe.image_url" :cover="recipe.cover" />
         <span
           v-if="recipe.source_url"
-          class="flex items-center gap-1 font-mono text-xs font-medium"
+          class="absolute top-2.5 right-2.5 flex items-center gap-1 rounded-full bg-background/90 px-2 py-0.5 font-mono text-xs font-medium text-foreground"
           title="Importada de uma URL"
         >
           <LinkIcon class="h-3.5 w-3.5" aria-hidden="true" />

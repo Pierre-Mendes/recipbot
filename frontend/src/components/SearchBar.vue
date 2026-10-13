@@ -12,6 +12,14 @@ const emit = defineEmits<{ search: [query: string, tags: string[]] }>()
 
 const query = ref('')
 const selectedTags = ref<string[]>([])
+const root = ref<HTMLElement | null>(null)
+
+/** Focus the text field (the bottom bar's "Buscar" tab lands here). */
+function focus() {
+  root.value?.querySelector<HTMLInputElement>('input[type="search"]')?.focus()
+}
+
+defineExpose({ focus })
 
 // Search-as-you-type: emit 300ms after the user stops typing, so the parent
 // re-queries without requiring a click on "Buscar".
@@ -30,7 +38,7 @@ function handleSubmit() {
 </script>
 
 <template>
-  <div class="mb-6 space-y-4">
+  <div ref="root" class="mb-6 space-y-4">
     <form class="flex gap-3" @submit.prevent="handleSubmit">
       <div class="relative flex-1">
         <Search class="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -41,16 +49,20 @@ function handleSubmit() {
           class="pl-10 h-12 rounded-full bg-muted text-base"
         />
       </div>
-      <Button type="submit" class="h-12 rounded-full px-6"> Buscar </Button>
+      <!-- Search runs as you type; on phones the button only costs width. -->
+      <Button type="submit" class="hidden h-12 rounded-full px-6 sm:inline-flex"> Buscar </Button>
     </form>
 
-    <div v-if="props.availableTags.length" class="flex flex-wrap gap-2">
+    <div
+      v-if="props.availableTags.length"
+      class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0"
+    >
       <button
         v-for="tag in props.availableTags"
         :key="tag.name"
         type="button"
         :aria-pressed="selectedTags.includes(tag.name)"
-        class="inline-flex h-9 items-center rounded-full border px-3.5 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 cursor-pointer"
+        class="inline-flex h-9 shrink-0 items-center rounded-full border px-3.5 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 cursor-pointer"
         :class="
           selectedTags.includes(tag.name)
             ? 'border-transparent bg-primary text-primary-foreground hover:bg-primary/90'

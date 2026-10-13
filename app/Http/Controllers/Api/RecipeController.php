@@ -11,10 +11,12 @@ use App\Http\Requests\ImportSpreadsheetRequest;
 use App\Http\Requests\IndexRecipesRequest;
 use App\Http\Requests\StoreRecipeRequest;
 use App\Http\Requests\UpdateRecipeRequest;
+use App\Http\Requests\UploadRecipeImageRequest;
 use App\Http\Resources\RecipeResource;
 use App\Models\Recipe;
 use App\Models\User;
 use App\Services\RecipeDraftService;
+use App\Services\RecipeImageService;
 use App\Services\RecipePdfImportStore;
 use App\Services\RecipePdfSegmenter;
 use App\Services\RecipeScraperService;
@@ -29,6 +31,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use RuntimeException;
 
 class RecipeController extends ApiController
 {
@@ -300,6 +303,35 @@ class RecipeController extends ApiController
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ]);
+    }
+
+    /**
+     * Upload (or replace) the recipe's photo (owner-only).
+     */
+    public function uploadImage(UploadRecipeImageRequest $request, Recipe $recipe, RecipeImageService $images): JsonResponse
+    {
+        Gate::authorize('update', $recipe);
+
+        /** @var UploadedFile $image */
+        $image = $request->file('image');
+
+        try {
+            $recipe = $images->store($recipe, $image);
+        } catch (RuntimeException) {
+            return response()->json(['message' => 'Could not store the image. Try again later.'], 503);
+        }
+
+        return $this->success(new RecipeResource($recipe), 'Recipe image updated');
+    }
+
+    /**
+     * Remove the recipe's photo (owner-only).
+     */
+    public function destroyImage(Recipe $recipe, RecipeImageService $images): JsonResponse
+    {
+        Gate::authorize('update', $recipe);
+
+        return $this->success(new RecipeResource($images->delete($recipe)), 'Recipe image removed');
     }
 
     /**

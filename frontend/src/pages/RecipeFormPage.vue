@@ -14,6 +14,7 @@ import type {
   Recipe,
   RecipeDraft,
   RecipeFormInput,
+  RecipeImageChange,
 } from '@/types'
 import { importErrorMessage } from '@/utils/importError'
 import { useRecipesStore } from '@/stores/recipes'
@@ -63,11 +64,34 @@ function startReview(drafts: RecipeDraft[]) {
   draftTotal.value = drafts.length
 }
 
-async function handleSubmit(input: RecipeFormInput) {
+/**
+ * Apply the photo change after the recipe itself is saved (a new recipe has
+ * no id before that). A failed upload doesn't undo the save - the recipe is
+ * kept and the user can retry from the edit screen.
+ */
+async function applyImageChange(id: string, image: RecipeImageChange): Promise<void> {
+  try {
+    if (image.file) {
+      await store.uploadImage(id, image.file)
+    } else if (image.remove) {
+      await store.removeImage(id)
+    }
+  } catch (e) {
+    toast.error(
+      importErrorMessage(e, 'A receita foi salva, mas não foi possível atualizar a foto.'),
+    )
+  }
+}
+
+async function handleSubmit(
+  input: RecipeFormInput,
+  image: RecipeImageChange = { file: null, remove: false },
+) {
   loading.value = true
   error.value = null
   try {
     const saved = recipeId ? await store.update(recipeId, input) : await store.create(input)
+    await applyImageChange(saved.id, image)
     toast.success(recipeId ? 'Receita atualizada com sucesso.' : 'Receita criada com sucesso.')
     if (draftQueue.value.length > 1) {
       // More recipes from the same import still await review.
@@ -202,7 +226,7 @@ function goBack() {
     </Button>
 
     <div class="mb-8">
-      <h1 class="text-3xl font-bold tracking-tight text-foreground">
+      <h1 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
         {{
           recipeId
             ? 'Editar Receita'
@@ -228,7 +252,7 @@ function goBack() {
 
     <div
       v-if="reviewDraft"
-      class="mb-6 flex items-start justify-between gap-4 rounded-md border border-primary/20 bg-primary/10 p-4 text-sm"
+      class="mb-6 flex flex-col gap-3 rounded-md border border-primary/20 bg-primary/10 p-4 text-sm sm:flex-row sm:items-start sm:justify-between sm:gap-4"
     >
       <p class="text-foreground/80">
         <strong v-if="draftTotal > 1" class="block mb-1 text-foreground">
@@ -237,7 +261,7 @@ function goBack() {
         Estes dados vieram da importação e ainda <strong>não foram salvos</strong>. Revise antes de
         criar.
       </p>
-      <div class="flex shrink-0 gap-1 -mr-2 -my-1">
+      <div class="flex shrink-0 gap-1 -ml-3 sm:-ml-0 sm:-mr-2 sm:-my-1">
         <Button v-if="draftQueue.length > 1" variant="ghost" size="sm" @click="skipDraft">
           Pular
         </Button>

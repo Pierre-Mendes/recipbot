@@ -105,6 +105,14 @@ export const useRecipesStore = defineStore('recipes', () => {
     return recipesApi.updateRecipe(id, input)
   }
 
+  async function uploadImage(id: string, file: File): Promise<Recipe> {
+    return recipesApi.uploadRecipeImage(id, file)
+  }
+
+  async function removeImage(id: string): Promise<Recipe> {
+    return recipesApi.deleteRecipeImage(id)
+  }
+
   async function remove(id: string): Promise<void> {
     await recipesApi.deleteRecipe(id)
     recipes.value = recipes.value.filter((r) => r.id !== id)
@@ -126,6 +134,8 @@ export const useRecipesStore = defineStore('recipes', () => {
     analyzePdf,
     confirmPdf,
     update,
+    uploadImage,
+    removeImage,
     remove,
   }
 })

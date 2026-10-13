@@ -35,14 +35,14 @@ async function handleLogout() {
               size="sm"
               :class="[
                 isActive ? 'bg-accent text-accent-foreground' : 'text-muted-foreground',
-                'hidden sm:flex',
+                'hidden md:flex',
               ]"
             >
               <BookOpen class="mr-2 h-4 w-4" />
               Minhas Receitas
             </Button>
           </RouterLink>
-          <RouterLink to="/recipes/new">
+          <RouterLink to="/recipes/new" class="hidden md:block">
             <Button variant="default" size="sm">
               <Plus class="mr-2 h-4 w-4" />
               Nova Receita
@@ -50,10 +50,11 @@ async function handleLogout() {
           </RouterLink>
         </template>
 
-        <div class="flex items-center gap-2 ml-2 pl-3 border-l border-border">
+        <div class="flex items-center gap-1 sm:gap-2 md:ml-2 md:pl-3 md:border-l md:border-border">
           <RouterLink
             to="/help"
-            class="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            :class="auth.isAuthenticated ? 'hidden md:flex' : 'flex'"
+            class="items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             title="Ajuda"
           >
             <HelpCircle class="h-5 w-5" />
@@ -85,7 +86,7 @@ async function handleLogout() {
           <template v-if="auth.isAuthenticated">
             <RouterLink
               :to="{ name: 'profile' }"
-              class="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              class="hidden md:flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               title="Perfil"
             >
               <UserCircle class="h-5 w-5" />

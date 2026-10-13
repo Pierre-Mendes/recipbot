@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Recipe;
+use App\Services\RecipeImageService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -23,6 +24,8 @@ class RecipeResource extends JsonResource
             'tags' => $this->tags,
             'source_url' => $this->source_url,
             'notes' => $this->notes,
+            'cover' => $this->cover?->value,
+            'image_url' => app(RecipeImageService::class)->url($this->resource),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { LayoutGrid, List } from 'lucide-vue-next'
 
 import RecipeCard from '@/components/RecipeCard.vue'
@@ -13,6 +14,21 @@ import { useRecipesStore } from '@/stores/recipes'
 import type { Recipe } from '@/types'
 
 const store = useRecipesStore()
+const route = useRoute()
+
+// The bottom bar's "Buscar" tab opens this page with ?search: jump to the
+// search field so the keyboard comes up right away.
+const searchBar = ref<InstanceType<typeof SearchBar> | null>(null)
+watch(
+  () => route.query.search,
+  async (search) => {
+    if (search === undefined) return
+    await nextTick()
+    window.scrollTo?.({ top: 0 })
+    searchBar.value?.focus()
+  },
+  { immediate: true },
+)
 
 // --- View mode (grid / list), persisted ------------------------------------
 type ViewMode = 'grid' | 'list'
@@ -87,16 +103,18 @@ function goToPage(page: number) {
 
 <template>
   <div class="animate-in fade-in slide-in-from-bottom-4 duration-500">
-    <div class="mb-8 flex items-center justify-between">
+    <div class="mb-6 flex items-center justify-between sm:mb-8">
       <div>
-        <h1 class="text-3xl font-bold tracking-tight text-foreground">Minhas Receitas</h1>
-        <p class="text-muted-foreground mt-1">
+        <h1 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          Minhas Receitas
+        </h1>
+        <p class="text-muted-foreground mt-1 text-sm sm:text-base">
           Gerencie e descubra suas ideias culinárias favoritas.
         </p>
       </div>
     </div>
 
-    <SearchBar :available-tags="store.tags" @search="handleSearch" />
+    <SearchBar ref="searchBar" :available-tags="store.tags" @search="handleSearch" />
 
     <!-- Controls: result count + sort + view toggle -->
     <div
@@ -157,7 +175,7 @@ function goToPage(page: number) {
     </div>
 
     <!-- Loading skeletons -->
-    <div v-if="store.loading" class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+    <div v-if="store.loading" class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
       <Card v-for="i in 6" :key="i" class="h-full overflow-hidden flex flex-col">
         <Skeleton class="h-32 w-full rounded-none" />
         <div class="p-6 pb-2">
@@ -219,7 +237,7 @@ function goToPage(page: number) {
       <div
         :class="
           viewMode === 'grid'
-            ? 'grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3'
+            ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3'
             : 'flex flex-col gap-3'
         "
       >

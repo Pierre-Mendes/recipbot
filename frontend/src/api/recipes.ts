@@ -73,6 +73,20 @@ export async function deleteRecipe(id: string): Promise<void> {
   await apiClient.delete(`/recipes/${id}`)
 }
 
+/** Upload (or replace) a recipe's photo; returns the updated recipe. */
+export async function uploadRecipeImage(id: string, file: File): Promise<Recipe> {
+  const form = new FormData()
+  form.append('image', file)
+  const { data } = await apiClient.post(`/recipes/${id}/image`, form)
+  return unwrapRecipe(data)
+}
+
+/** Remove a recipe's photo; returns the updated recipe. */
+export async function deleteRecipeImage(id: string): Promise<Recipe> {
+  const { data } = await apiClient.delete(`/recipes/${id}/image`)
+  return unwrapRecipe(data)
+}
+
 /**
  * Download a recipe as an .xlsx workbook. The endpoint is JWT-protected, so we
  * fetch the bytes through the authenticated client (a plain link can't send the

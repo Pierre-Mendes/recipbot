@@ -10,13 +10,21 @@ import {
   FileSpreadsheet,
 } from 'lucide-vue-next'
 
-import type { FromUrlInput, Recipe, RecipeDraft, RecipeFormInput } from '@/types'
+import type {
+  FromUrlInput,
+  Recipe,
+  RecipeCover,
+  RecipeDraft,
+  RecipeFormInput,
+  RecipeImageChange,
+} from '@/types'
 import Card from './ui/Card.vue'
 import CardContent from './ui/CardContent.vue'
 import Input from './ui/Input.vue'
 import Label from './ui/Label.vue'
 import Button from './ui/Button.vue'
 import ListEditor from './ListEditor.vue'
+import CoverPicker from './CoverPicker.vue'
 import { cn } from '@/utils/cn'
 
 const props = withDefaults(
@@ -34,7 +42,7 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  submit: [input: RecipeFormInput]
+  submit: [input: RecipeFormInput, image: RecipeImageChange]
   submitFromUrl: [input: FromUrlInput]
   submitFile: [file: File]
 }>()
@@ -60,6 +68,16 @@ const sourceUrl = ref(props.recipe?.source_url ?? '')
 const notes = ref(props.recipe?.notes ?? '')
 const importUrl = ref('')
 
+// Drafts carry no cover/photo; only a saved recipe does.
+function savedCover(recipe: Recipe | RecipeDraft | null): RecipeCover | null {
+  return recipe && 'cover' in recipe ? (recipe.cover ?? null) : null
+}
+function savedImageUrl(recipe: Recipe | RecipeDraft | null): string | null {
+  return recipe && 'image_url' in recipe ? (recipe.image_url ?? null) : null
+}
+const cover = ref<RecipeCover | null>(savedCover(props.recipe))
+const imageChange = ref<RecipeImageChange>({ file: null, remove: false })
+
 // Tag Chips Logic
 const tags = ref<string[]>(props.recipe?.tags ? [...props.recipe.tags] : [])
 const tagInput = ref('')
@@ -80,6 +98,8 @@ watch(
     sourceUrl.value = recipe?.source_url ?? ''
     notes.value = recipe?.notes ?? ''
     tags.value = recipe?.tags ? [...recipe.tags] : []
+    cover.value = savedCover(recipe)
+    imageChange.value = { file: null, remove: false }
     if (recipe) {
       mode.value = 'manual'
     }
@@ -112,14 +132,19 @@ function handleManualSubmit() {
   if (tagInput.value) addTag()
 
   // ListEditor already emits trimmed, non-empty items.
-  emit('submit', {
-    title: title.value,
-    ingredients: ingredients.value,
-    instructions: instructions.value,
-    tags: tags.value,
-    source_url: sourceUrl.value || null,
-    notes: notes.value.trim() || null,
-  })
+  emit(
+    'submit',
+    {
+      title: title.value,
+      ingredients: ingredients.value,
+      instructions: instructions.value,
+      tags: tags.value,
+      source_url: sourceUrl.value || null,
+      notes: notes.value.trim() || null,
+      cover: cover.value,
+    },
+    imageChange.value,
+  )
 }
 
 function handleUrlSubmit() {
@@ -146,10 +171,12 @@ const textareaClass =
             ? 'border-b-2 border-primary text-primary'
             : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
         "
+        aria-label="Entrada Manual"
         @click="mode = 'manual'"
       >
         <PenLine class="h-4 w-4" />
-        Entrada Manual
+        <span class="sm:hidden" aria-hidden="true">Manual</span>
+        <span class="hidden sm:inline" aria-hidden="true">Entrada Manual</span>
       </button>
       <button
         type="button"
@@ -159,10 +186,12 @@ const textareaClass =
             ? 'border-b-2 border-primary text-primary'
             : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
         "
+        aria-label="Importar de URL"
         @click="mode = 'url'"
       >
         <LinkIcon class="h-4 w-4" />
-        Importar de URL
+        <span class="sm:hidden" aria-hidden="true">Link</span>
+        <span class="hidden sm:inline" aria-hidden="true">Importar de URL</span>
       </button>
       <button
         type="button"
@@ -192,6 +221,13 @@ const textareaClass =
             placeholder="ex: Bolo de Cenoura com Chocolate"
           />
         </div>
+        <CoverPicker
+          v-model:cover="cover"
+          v-model:image="imageChange"
+          :title="title"
+          :current-image-url="savedImageUrl(props.recipe)"
+        />
+
         <ListEditor
           v-model="ingredients"
           label="Ingredientes"
