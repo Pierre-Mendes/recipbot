@@ -104,20 +104,27 @@ jobs:
           kubectl config set-context k3s --cluster=k3s --user=ci --namespace=recipbot-stg
           kubectl config use-context k3s
 
-      # set image pina a tag SHA do commit (determinístico). app/queue/scheduler
-      # compartilham a imagem do backend; frontend tem a sua. postgres/redis
-      # (dados/infra) NÃO são rolados aqui.
-      - name: Rolar as imagens novas
+      # Precisa do checkout: os manifests (k8s/) são aplicados a cada deploy.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      # Aplica k8s/*.yaml renderizado por k8s/render.sh: imagens de backend/
+      # frontend já pinadas em sha-<commit> (um rollout só, determinístico) e
+      # hash do ConfigMap nos pods, então mudar a config reinicia a app. Um
+      # merge na main agora entrega código E manifests. 00-namespace.yaml e o
+      # Secret ficam de fora (criados uma vez à mão; o ci-deployer não tem
+      # permissão neles - ver k8s/ci/ci-deployer-rbac.yaml).
+      - name: Aplicar manifests
         env:
-          OWNER: ${{ github.repository_owner }}
           SHA: ${{ github.sha }}
         run: |
-          OWNER_LC="$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')"
-          BACK="ghcr.io/${OWNER_LC}/recipbot-backend:sha-${SHA}"
-          FRONT="ghcr.io/${OWNER_LC}/recipbot-frontend:sha-${SHA}"
-          kubectl -n recipbot-stg set image deployment/recipbot-app       app="$BACK"
-          kubectl -n recipbot-stg set image deployment/recipbot-queue     queue="$BACK"
-          kubectl -n recipbot-stg set image deployment/recipbot-scheduler scheduler="$BACK"
-          kubectl -n recipbot-stg set image deployment/recipbot-frontend  frontend="$FRONT"
-          kubectl -n recipbot-stg rollout status deployment/recipbot-app       --timeout=240s
-          kubectl -n recipbot-stg rollout status deployment/recipbot-frontend  --timeout=240s
+          k8s/render.sh "$SHA" "$RUNNER_TEMP/k8s"
+          # diff só pra log (sai 1 quando há diferença).
+          kubectl diff -f "$RUNNER_TEMP/k8s" || true
+          kubectl apply -f "$RUNNER_TEMP/k8s"
+
+      - name: Aguardar rollout
+        run: |
+          for deploy in recipbot-app recipbot-queue recipbot-scheduler recipbot-frontend; do
+            kubectl -n recipbot-stg rollout status "deployment/$deploy" --timeout=240s
+          done
+          kubectl -n recipbot-stg rollout status statefulset/recipbot-minio --timeout=180s
