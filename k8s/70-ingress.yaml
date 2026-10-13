@@ -1,0 +1,33 @@
+# Ingress Traefik SAME-ORIGIN: um host só, /api vai pro backend e o resto pro
+# frontend estático. Same-origin = sem CORS, e o SPA chama /api relativo.
+#
+# Host via nip.io no IP da TAILNET (100.92.187.65): resolve pro IP sem mexer em
+# DNS, e o Traefik (klipper) escuta host 80 em todas as interfaces, então
+# funciona de qualquer dispositivo na tailnet. HTTP puro (staging).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: recipbot
+  namespace: recipbot-stg
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: recipbot-stg.100.92.187.65.nip.io
+      http:
+        paths:
+          # /api/* → Laravel (mais específico; Traefik casa o prefixo mais longo primeiro)
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: recipbot-app
+                port:
+                  number: 8000
+          # todo o resto → SPA estático (nginx)
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: recipbot-frontend
+                port:
+                  number: 80

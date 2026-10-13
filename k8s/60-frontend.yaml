@@ -1,0 +1,40 @@
+# Frontend de produção (nginx servindo o build estático). Imagem publicada pelo
+# PR #33 do recipbot. imagePullPolicy: Always garante que pega a :latest nova.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recipbot-frontend
+  namespace: recipbot-stg
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: recipbot-frontend }
+  template:
+    metadata:
+      labels: { app: recipbot-frontend }
+    spec:
+      containers:
+        - name: frontend
+          image: ghcr.io/pierre-mendes/recipbot-frontend:latest
+          imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+          ports:
+            - { containerPort: 80, name: http }
+          readinessProbe:
+            httpGet: { path: /, port: 80 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests: { cpu: "50m", memory: "64Mi" }
+            limits: { memory: "256Mi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: recipbot-frontend
+  namespace: recipbot-stg
+spec:
+  selector: { app: recipbot-frontend }
+  ports:
+    - { port: 80, targetPort: 80, name: http }

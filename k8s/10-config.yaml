@@ -1,0 +1,57 @@
+# Config NÃO-secreta do recipbot (env compartilhado por app/queue/scheduler).
+# Segredos (APP_KEY, JWT_SECRET, DB_PASSWORD) NÃO ficam aqui - vão no Secret
+# recipbot-secrets, criado imperativamente (ver README, pra não versionar segredo).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: recipbot-config
+  namespace: recipbot-stg
+data:
+  APP_NAME: RecipBot
+  # Staging isolado: debug LIGADO ajuda a diagnosticar. Desliga na hora do cutover.
+  APP_ENV: staging
+  APP_DEBUG: "true"
+  # Host do ingress (Fase 1b). Resolve pro IP da tailnet via nip.io.
+  APP_URL: http://recipbot-stg.100.92.187.65.nip.io
+  FRONTEND_URL: http://recipbot-stg.100.92.187.65.nip.io
+  CORS_ALLOWED_ORIGINS: http://recipbot-stg.100.92.187.65.nip.io
+
+  # Banco (nomes de Service do próprio namespace)
+  DB_CONNECTION: pgsql
+  DB_HOST: recipbot-postgres
+  DB_PORT: "5432"
+  DB_DATABASE: recipbot
+  DB_USERNAME: postgres
+
+  # Redis
+  REDIS_CLIENT: predis
+  REDIS_HOST: recipbot-redis
+  REDIS_PORT: "6379"
+  REDIS_PASSWORD: "null"
+
+  # Cache / fila / sessão via Redis
+  CACHE_STORE: redis
+  CACHE_PREFIX: recipbot_cache_
+  QUEUE_CONNECTION: redis
+  QUEUE_DRIVER: redis
+  SESSION_DRIVER: redis
+  SESSION_LIFETIME: "120"
+  SESSION_SECURE_COOKIE: "false"
+  SESSION_HTTP_ONLY: "true"
+  SESSION_SAME_SITE: lax
+  BROADCAST_DRIVER: redis
+
+  # JWT (o SECRET vem do Secret; aqui só os parâmetros)
+  JWT_ALGORITHM: HS256
+  JWT_TTL: "60"
+
+  # Limites / logging
+  RATE_LIMIT_REQUESTS: "60"
+  RATE_LIMIT_PERIOD: "60"
+  LOG_CHANNEL: stack
+  LOG_LEVEL: debug
+
+  # Mail (placeholder, mesmo do .env.example)
+  MAIL_MAILER: log
+  MAIL_FROM_ADDRESS: noreply@recipbot.local
+  MAIL_FROM_NAME: RecipBot
