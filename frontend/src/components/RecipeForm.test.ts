@@ -33,7 +33,9 @@ describe('RecipeForm', () => {
         tags: ['sobremesa'],
         source_url: null,
         notes: null,
+        cover: null,
       },
+      { file: null, remove: false },
     ])
   })
 
@@ -54,8 +56,23 @@ describe('RecipeForm', () => {
         tags: [],
         source_url: null,
         notes: 'Ver post no Instagram',
+        cover: null,
       },
+      { file: null, remove: false },
     ])
+  })
+
+  it('submits the chosen cover illustration with the recipe', async () => {
+    const { emitted } = render(RecipeForm)
+
+    await fireEvent.update(screen.getByLabelText('Título'), 'Bolo')
+    await fireEvent.update(screen.getByLabelText('ingrediente 1'), 'farinha')
+    await fireEvent.click(screen.getByRole('radio', { name: 'Bolo' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Criar receita' }))
+
+    const [input, image] = emitted().submit?.[0] as [{ cover: string }, unknown]
+    expect(input.cover).toBe('cake')
+    expect(image).toEqual({ file: null, remove: false })
   })
 
   it('emits a from-url payload when the import tab is used', async () => {

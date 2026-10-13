@@ -23,6 +23,7 @@ import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useIngredientChecklist } from '@/composables/useIngredientChecklist'
 import Button from '@/components/ui/Button.vue'
 import BitMascot from '@/components/brand/BitMascot.vue'
+import RecipeCoverArt from '@/components/RecipeCoverArt.vue'
 import Card from '@/components/ui/Card.vue'
 import CardContent from '@/components/ui/CardContent.vue'
 import Skeleton from '@/components/ui/Skeleton.vue'
@@ -228,16 +229,30 @@ function noteSegments(text: string): { text: string; href: string | null }[] {
     </Button>
 
     <!-- Hero Section -->
+    <div
+      v-if="recipe.image_url || recipe.cover"
+      class="-mx-4 mb-6 aspect-[4/3] overflow-hidden sm:mx-0 sm:aspect-[21/9] sm:rounded-xl sm:border sm:border-border"
+    >
+      <RecipeCoverArt
+        :title="recipe.title"
+        :image-url="recipe.image_url"
+        :cover="recipe.cover"
+        initial-class="text-8xl"
+        eager
+      />
+    </div>
+
     <div class="mb-8">
       <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
-        <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+        <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-foreground break-words">
           {{ recipe.title }}
         </h1>
-        <div class="flex gap-2 shrink-0">
+        <div class="grid grid-cols-3 gap-2 shrink-0 sm:flex">
           <div class="relative">
             <Button
               variant="outline"
               size="sm"
+              class="w-full"
               :disabled="exporting"
               @click="exportMenuOpen = !exportMenuOpen"
             >
@@ -248,7 +263,7 @@ function noteSegments(text: string): { text: string; href: string | null }[] {
             <template v-if="exportMenuOpen">
               <div class="fixed inset-0 z-10" @click="exportMenuOpen = false"></div>
               <div
-                class="absolute right-0 mt-1 z-20 w-44 rounded-md border border-border bg-card shadow-lg py-1 animate-in fade-in zoom-in-95 duration-150"
+                class="absolute left-0 sm:left-auto sm:right-0 mt-1 z-20 w-44 rounded-md border border-border bg-card shadow-lg py-1 animate-in fade-in zoom-in-95 duration-150"
               >
                 <button
                   type="button"
@@ -270,12 +285,12 @@ function noteSegments(text: string): { text: string; href: string | null }[] {
             </template>
           </div>
           <RouterLink :to="{ name: 'recipe-edit', params: { id: recipe.id } }">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" class="w-full">
               <Pencil class="h-4 w-4 mr-2" />
               Editar
             </Button>
           </RouterLink>
-          <Button variant="destructive" size="sm" @click="handleDelete">
+          <Button variant="destructive" size="sm" class="w-full" @click="handleDelete">
             <Trash2 class="h-4 w-4 mr-2" />
             Excluir
           </Button>
@@ -299,7 +314,7 @@ function noteSegments(text: string): { text: string; href: string | null }[] {
         <Card class="bg-card shadow-sm border-border/50">
           <CardContent class="p-6">
             <div class="flex items-baseline justify-between gap-3 mb-4">
-              <h2 class="text-2xl font-bold text-foreground">Ingredientes</h2>
+              <h2 class="text-xl font-bold text-foreground sm:text-2xl">Ingredientes</h2>
               <span
                 v-if="displayIngredients.length"
                 class="font-mono text-sm text-muted-foreground"
@@ -411,7 +426,7 @@ function noteSegments(text: string): { text: string; href: string | null }[] {
       <div class="md:col-span-2">
         <Card class="h-full shadow-sm border-border/50">
           <CardContent class="p-6 sm:p-8">
-            <h2 class="text-2xl font-bold text-foreground mb-6">Modo de preparo</h2>
+            <h2 class="text-xl font-bold text-foreground mb-6 sm:text-2xl">Modo de preparo</h2>
             <template v-if="recipe.instructions?.length">
               <ol class="space-y-5">
                 <li

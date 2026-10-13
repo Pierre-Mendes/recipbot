@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Enums\RecipeCover;
 use Database\Factories\RecipeFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Validation\Rule;
 
 class Recipe extends Model
 {
@@ -33,6 +35,7 @@ class Recipe extends Model
         'tags',
         'source_url',
         'notes',
+        'cover',
     ];
 
     /**
@@ -46,6 +49,7 @@ class Recipe extends Model
             'ingredients' => 'array',
             'instructions' => 'array',
             'tags' => 'array',
+            'cover' => RecipeCover::class,
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
             'deleted_at' => 'datetime',
@@ -79,6 +83,7 @@ class Recipe extends Model
             'tags.*' => ['string', 'max:50', 'regex:/^[\p{L}\p{N} -]+$/u'],
             'source_url' => ['nullable', 'url', 'max:2048'],
             'notes' => ['sometimes', 'nullable', 'string', 'max:2000'],
+            'cover' => ['sometimes', 'nullable', Rule::enum(RecipeCover::class)],
         ];
     }
 
@@ -105,6 +110,7 @@ class Recipe extends Model
             'tags.*' => ['string', 'max:50', 'regex:/^[\p{L}\p{N} -]+$/u'],
             'source_url' => ['sometimes', 'nullable', 'url', 'max:2048'],
             'notes' => ['sometimes', 'nullable', 'string', 'max:2000'],
+            'cover' => ['sometimes', 'nullable', Rule::enum(RecipeCover::class)],
         ];
     }
 

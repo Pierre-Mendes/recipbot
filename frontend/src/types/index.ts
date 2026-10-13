@@ -6,6 +6,9 @@ export interface User {
   updated_at: string
 }
 
+/** Built-in cover illustrations (keys mirror App\Enums\RecipeCover). */
+export type RecipeCover = 'cake' | 'pasta' | 'salad' | 'soup' | 'bread' | 'meat' | 'fish' | 'drink'
+
 export interface Recipe {
   id: string
   user_id: number
@@ -15,6 +18,9 @@ export interface Recipe {
   tags: string[]
   source_url: string | null
   notes?: string | null
+  cover?: RecipeCover | null
+  /** Public URL of the uploaded photo (MinIO/S3), when there is one. */
+  image_url?: string | null
   created_at: string
   updated_at: string
 }
@@ -65,6 +71,18 @@ export interface RecipeFormInput {
   tags: string[]
   source_url?: string | null
   notes?: string | null
+  cover?: RecipeCover | null
+}
+
+/**
+ * Photo change collected by the form. The photo is uploaded in a separate
+ * request after the recipe is saved (a new recipe has no id before that).
+ */
+export interface RecipeImageChange {
+  /** New photo to upload, already resized for upload. */
+  file: File | null
+  /** Remove the current photo (ignored when `file` is set). */
+  remove: boolean
 }
 
 export interface FromUrlInput {

@@ -431,6 +431,83 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/recipes/{recipe}/image:
+    post:
+      tags: [Recipes]
+      summary: Upload or replace the recipe photo (owner only)
+      description: Stored on the recipe images disk (MinIO/S3 in docker). Replaces and deletes any previous photo.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/RecipeId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image]
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: JPG, PNG or WebP, up to 5 MB and 8000x8000 px.
+      responses:
+        '200':
+          description: Photo stored
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, message]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Recipe'
+                  message:
+                    type: string
+                    example: Recipe image updated
+        '401':
+          $ref: '#/components/responses/UnauthorizedMessage'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          description: Image storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+    delete:
+      tags: [Recipes]
+      summary: Remove the recipe photo (owner only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/RecipeId'
+      responses:
+        '200':
+          description: Photo removed
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, message]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Recipe'
+                  message:
+                    type: string
+                    example: Recipe image removed
+        '401':
+          $ref: '#/components/responses/UnauthorizedMessage'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /api/recipes/search:
     post:
       tags: [Search]
@@ -593,6 +670,16 @@ components:
           type: string
           format: uri
           nullable: true
+        cover:
+          type: string
+          nullable: true
+          enum: [cake, pasta, salad, soup, bread, meat, fish, drink, null]
+          description: Built-in cover illustration, shown when there is no photo.
+        image_url:
+          type: string
+          format: uri
+          nullable: true
+          description: Public URL of the uploaded photo.
         created_at:
           type: string
           format: date-time
@@ -695,6 +782,11 @@ components:
           format: uri
           nullable: true
           maxLength: 2048
+        cover:
+          type: string
+          nullable: true
+          enum: [cake, pasta, salad, soup, bread, meat, fish, drink, null]
+          description: Built-in cover illustration, shown when there is no photo.
     UpdateRecipeRequest:
       type: object
       properties:
@@ -728,6 +820,11 @@ components:
           format: uri
           nullable: true
           maxLength: 2048
+        cover:
+          type: string
+          nullable: true
+          enum: [cake, pasta, salad, soup, bread, meat, fish, drink, null]
+          description: Built-in cover illustration, shown when there is no photo.
     FromUrlRequest:
       type: object
       required: [url]

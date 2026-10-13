@@ -6,12 +6,14 @@ import {
   createRecipe,
   createRecipeFromUrl,
   deleteRecipe,
+  deleteRecipeImage,
   getRecipe,
   listRecipes,
   listTags,
   previewRecipeFromUrl,
   searchRecipes,
   updateRecipe,
+  uploadRecipeImage,
 } from '@/api/recipes'
 import type { Recipe, RecipeDraft } from '@/types'
 
@@ -253,5 +255,28 @@ describe('recipes api', () => {
     expect(drafts.map((d) => d.id)).toEqual(['d1', 'd2'])
     expect(drafts[0]?.notes).toBe('Dica')
     expect(drafts[1]?.ingredients).toEqual([])
+  })
+
+  it('uploadRecipeImage posts the photo as multipart form data', async () => {
+    const post = vi
+      .spyOn(apiClient, 'post')
+      .mockResolvedValue({ data: { data: { ...recipe, image_url: 'http://minio/x.jpg' } } })
+    const file = new File(['x'], 'bolo.jpg', { type: 'image/jpeg' })
+
+    const result = await uploadRecipeImage('uuid-1', file)
+
+    const [url, body] = post.mock.calls[0] ?? []
+    expect(url).toBe('/recipes/uuid-1/image')
+    expect((body as FormData).get('image')).toBe(file)
+    expect(result.image_url).toBe('http://minio/x.jpg')
+  })
+
+  it('deleteRecipeImage deletes the photo and returns the updated recipe', async () => {
+    const del = vi.spyOn(apiClient, 'delete').mockResolvedValue({ data: { data: recipe } })
+
+    const result = await deleteRecipeImage('uuid-1')
+
+    expect(del).toHaveBeenCalledWith('/recipes/uuid-1/image')
+    expect(result.id).toBe('uuid-1')
   })
 })

@@ -31,6 +31,8 @@ Route::middleware('auth:api')->group(function () {
     Route::get('recipes/drafts/{draft}', [RecipeController::class, 'draft']);
     Route::get('recipes/{recipe}/export', [RecipeController::class, 'export']);
     Route::get('recipes/{recipe}/export-pdf', [RecipeController::class, 'exportPdf']);
+    Route::post('recipes/{recipe}/image', [RecipeController::class, 'uploadImage']);
+    Route::delete('recipes/{recipe}/image', [RecipeController::class, 'destroyImage']);
     Route::apiResource('recipes', RecipeController::class);
     Route::get('tags', [TagController::class, 'suggestions']);
 });

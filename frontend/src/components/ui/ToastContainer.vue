@@ -20,7 +20,7 @@ const variantClasses = {
 <template>
   <Teleport to="body">
     <div
-      class="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 max-w-sm w-full pointer-events-none"
+      class="fixed inset-x-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[100] flex flex-col gap-2 pointer-events-none sm:inset-x-auto sm:right-4 sm:max-w-sm sm:w-full md:bottom-4"
     >
       <TransitionGroup
         enter-active-class="transition-all duration-300 ease-out"
