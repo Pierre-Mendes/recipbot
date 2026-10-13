@@ -1,3 +1,5 @@
+# Backups diários: Postgres (pg_dump) e, mais abaixo, as fotos do MinIO.
+#
 # Backup diário do Postgres (pg_dump) para /mnt/storage/backups/recipbot-k3s no
 # node, via hostPath. Retenção 14 dias. Falha alto se o dump sair pequeno demais
 # (guarda contra backups vazios). A pasta precisa existir no node antes de aplicar:
@@ -50,6 +52,56 @@ spec:
                   mv "${out}.tmp" "$out"
                   find /backups -name 'recipbot-*.sql.gz' -mtime +14 -delete
                   echo "OK: $out (${size} bytes)"
+              volumeMounts:
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: backups
+              hostPath:
+                path: /mnt/storage/backups/recipbot-k3s
+                type: Directory
+---
+# Espelho diário das fotos (bucket do MinIO) para .../recipbot-k3s/images no
+# node. `mc mirror` sem --remove: foto apagada no bucket continua no backup.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: recipbot-images-backup
+  namespace: recipbot-stg
+spec:
+  schedule: "30 3 * * *"
+  timeZone: "America/Sao_Paulo"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: images-backup
+              image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+              securityContext:
+                allowPrivilegeEscalation: false
+              envFrom:
+                - configMapRef: { name: recipbot-config }
+              env:
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef: { name: recipbot-secrets, key: AWS_ACCESS_KEY_ID }
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef: { name: recipbot-secrets, key: AWS_SECRET_ACCESS_KEY }
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  mc alias set stg "$AWS_ENDPOINT" "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY"
+                  mkdir -p /backups/images
+                  mc mirror --overwrite "stg/$AWS_BUCKET" /backups/images
+                  echo "OK: $(find /backups/images -type f | wc -l) arquivos"
               volumeMounts:
                 - name: backups
                   mountPath: /backups

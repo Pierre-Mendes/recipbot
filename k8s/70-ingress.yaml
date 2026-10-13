@@ -1,5 +1,6 @@
-# Ingress Traefik SAME-ORIGIN: um host só, /api vai pro backend e o resto pro
-# frontend estático. Same-origin = sem CORS, e o SPA chama /api relativo.
+# Ingress Traefik SAME-ORIGIN: um host só, /api vai pro backend, /recipbot/recipes
+# pras fotos no MinIO e o resto pro frontend estático. Same-origin = sem CORS,
+# e o SPA chama /api relativo.
 #
 # Host via nip.io no IP da TAILNET (100.92.187.65): resolve pro IP sem mexer em
 # DNS, e o Traefik (klipper) escuta host 80 em todas as interfaces, então
@@ -23,6 +24,15 @@ spec:
                 name: recipbot-app
                 port:
                   number: 8000
+          # /recipbot/recipes/* → fotos no MinIO (bucket "recipbot", path-style).
+          # Só o prefixo dos objetos, não a raiz do bucket nem a API do MinIO.
+          - path: /recipbot/recipes
+            pathType: Prefix
+            backend:
+              service:
+                name: recipbot-minio
+                port:
+                  number: 9000
           # todo o resto → SPA estático (nginx)
           - path: /
             pathType: Prefix

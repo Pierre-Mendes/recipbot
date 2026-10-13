@@ -1,5 +1,5 @@
 # Config NÃO-secreta do recipbot (env compartilhado por app/queue/scheduler).
-# Segredos (APP_KEY, JWT_SECRET, DB_PASSWORD) NÃO ficam aqui - vão no Secret
+# Segredos (APP_KEY, JWT_SECRET, DB_PASSWORD, AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY) NÃO ficam aqui - vão no Secret
 # recipbot-secrets, criado imperativamente (ver README, pra não versionar segredo).
 apiVersion: v1
 kind: ConfigMap
@@ -40,6 +40,17 @@ data:
   SESSION_HTTP_ONLY: "true"
   SESSION_SAME_SITE: lax
   BROADCAST_DRIVER: redis
+
+  # Fotos das receitas no MinIO (35-minio.yaml). As credenciais (AWS_ACCESS_KEY_ID
+  # / AWS_SECRET_ACCESS_KEY) vêm do Secret. AWS_URL é RELATIVO de propósito: o
+  # Ingress serve /recipbot/recipes/* a partir do MinIO no mesmo host do SPA,
+  # então a foto abre tanto pelo nip.io quanto pelo hostname do Tailscale.
+  RECIPE_IMAGES_DISK: s3
+  AWS_DEFAULT_REGION: us-east-1
+  AWS_BUCKET: recipbot
+  AWS_ENDPOINT: http://recipbot-minio:9000
+  AWS_URL: /recipbot
+  AWS_USE_PATH_STYLE_ENDPOINT: "true"
 
   # JWT (o SECRET vem do Secret; aqui só os parâmetros)
   JWT_ALGORITHM: HS256
