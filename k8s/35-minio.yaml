@@ -1,6 +1,8 @@
 # MinIO (S3-compatível) para as fotos das receitas — StatefulSet com PVC
 # (local-path), como o Postgres. Credenciais vêm do Secret recipbot-secrets
 # (AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY, as mesmas que a app usa).
+# Imagens pgsty/*: build comunitário do MinIO - a MinIO parou de publicar
+# minio/minio e minio/mc no Docker Hub.
 # O navegador NÃO fala com este Service direto: as fotos saem pelo Ingress
 # (/recipbot/recipes → recipbot-minio:9000), same-origin com o SPA.
 apiVersion: apps/v1
@@ -19,7 +21,7 @@ spec:
     spec:
       containers:
         - name: minio
-          image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+          image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
@@ -68,8 +70,9 @@ spec:
 ---
 # Cria o bucket e libera só LEITURA anônima (download) — o SPA carrega as fotos
 # direto em <img>; as chaves dos objetos são UUIDs aleatórios. Upload continua
-# exigindo as credenciais (só a app tem). Idempotente; o TTL apaga o Job depois
-# de concluído, então todo `kubectl apply -f k8s/` roda de novo sem conflito.
+# exigindo as credenciais (só a app tem). Idempotente. O spec de um Job é
+# imutável, então o CD apaga este Job antes de cada apply (e o TTL o remove
+# depois de concluído) - ele sempre roda de novo, sem conflito.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -83,7 +86,7 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: mc
-          image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+          image: pgsty/mc:RELEASE.2026-09-16T00-00-00Z
           securityContext:
             allowPrivilegeEscalation: false
           envFrom:

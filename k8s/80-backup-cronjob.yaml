@@ -82,7 +82,7 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: images-backup
-              image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+              image: pgsty/mc:RELEASE.2026-09-16T00-00-00Z
               securityContext:
                 allowPrivilegeEscalation: false
               envFrom:

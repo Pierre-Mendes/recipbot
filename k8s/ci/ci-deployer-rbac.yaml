@@ -1,0 +1,57 @@
+# Permissões do CD (ServiceAccount ci-deployer, usado pelo job `deploy` em
+# .github/workflows/docker-publish.yml). Fica numa SUBPASTA de propósito:
+# `kubectl apply -f k8s/` não desce em subpastas, e o CD não pode aplicar as
+# próprias permissões. Aplique uma vez, como admin:
+#   kubectl apply -f k8s/ci/ci-deployer-rbac.yaml
+#
+# Escopo: só o namespace recipbot-stg e só os tipos que existem em k8s/*.yaml.
+# Sem Secrets (o recipbot-secrets é criado à mão), sem RBAC, sem Namespace.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ci-deployer
+  namespace: recipbot-stg
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ci-deployer
+  namespace: recipbot-stg
+rules:
+  - apiGroups: [""]
+    resources: [configmaps, services]
+    verbs: [get, list, create, patch, update]
+  - apiGroups: [apps]
+    resources: [deployments, statefulsets]
+    verbs: [get, list, watch, create, patch, update]
+  # rollout status lê os ReplicaSets/pods do deployment.
+  - apiGroups: [apps]
+    resources: [replicasets]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [get, list, watch]
+  - apiGroups: [batch]
+    resources: [cronjobs]
+    verbs: [get, list, create, patch, update]
+  # delete: o CD recria o Job recipbot-minio-init a cada deploy (spec imutável).
+  - apiGroups: [batch]
+    resources: [jobs]
+    verbs: [get, list, create, patch, update, delete]
+  - apiGroups: [networking.k8s.io]
+    resources: [ingresses]
+    verbs: [get, list, create, patch, update]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ci-deployer
+  namespace: recipbot-stg
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ci-deployer
+subjects:
+  - kind: ServiceAccount
+    name: ci-deployer
+    namespace: recipbot-stg
